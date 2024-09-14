@@ -65,35 +65,41 @@ class Client:
         self.port = port
         self.client_socket = None
         self.is_running = True  # Flag to control the background thread
+        print(f'client.py: Created new client id: {client_id}, host: {host}, port: {port}')
+
+    def get_client_id(self):
+        return self.client_id
 
     def create_client_socket(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print(f'client.py: Created socket for client id: {self.client_id}')
 
     def connect(self):
         self.create_client_socket()
         self.client_socket.connect((self.host, self.port))
-        print(f"Client {self.client_id} connected to server at {self.host}:{self.port}")
+        print(f"client.py: Client {self.client_id} connected to server at {self.host}:{self.port}")
 
     def send_message(self, message):
         if self.client_socket:
+            message = "1" + message
             self.client_socket.send(message.encode('utf-8'))
-            print(f"Client {self.client_id} sent message: {message}")
+            print(f"client.py: Client {self.client_id} sent message: {message[1:]}")
         else:
-            raise Exception("Client is not connected to a server.")
+            raise Exception("client.py: Client is not connected to a server.")
 
     def close(self):
         if self.client_socket:
             self.client_socket.close()
             self.is_running = False
-            print(f"Client {self.client_id} socket closed.")
+            print(f"client.py: Client {self.client_id} socket closed.")
         else:
-            raise Exception("Client socket was never created or is already closed.")
+            raise Exception("client.py: Client socket was never created or is already closed.")
 
     def run_in_background(self):
         #Thread function to simulate background tasks.
         while self.is_running:
             time.sleep(1)
-            print(f"Client {self.client_id} running in background...")
+            #print(f"\n[client.py: Client {self.client_id} running in background...]\n")
 
 def client_thread_function(client): 
     """

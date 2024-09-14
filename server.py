@@ -5,24 +5,23 @@ response = 'server_data'
 data = set()
 # Function to handle communication with a single client
 def handle_client(conn, addr):
-    print(f"New connection from {addr}")
+    print(f"server.py: New connection from {addr}")
 
     while True:
         message = conn.recv(1024).decode('utf-8')
 
         # Close the server if the message is NULL (empty)
         if not message:
-            print(f"Client {addr} disconnected.")
+            print(f"server.py: Client {addr} disconnected.")
             break
     
         operation = message[0]
-        print(f"server status -- opeartion: {operation}")
         if operation == '0':
-            print(f'recv_message call from {addr}')
+            print(f'server.py: recv_message call from {addr}')
             conn.send(response.encode('utf-8'))
             data.add(conn)
         if operation == '1':
-            print(f'send_message call from {addr}: {message[1:]}')
+            print(f'server.py: Message received\nClient address: {addr}\nMessage: {message[1:]}\n')
 
 
     # Close the client connection
@@ -42,7 +41,7 @@ def start_server():
 
     # Listen for incoming connections
     server_socket.listen()
-    print(f"Server listening on {host}:{port}")
+    print(f"server.py: Server listening on {host}:{port}")
 
     while True:
         # Accept a new connection from a client
