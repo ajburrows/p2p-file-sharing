@@ -1,6 +1,6 @@
 import threading
 import time
-from client import Client, client_thread_function  # Assuming the Client class is in client.py
+from peer import Peer, peer_thread_function
 import subprocess
 
 HOST = '127.0.0.1'
@@ -21,16 +21,16 @@ def stop_server(server_process):
         server_process.kill()  # Forcefully kill the server if it does not terminate
         print("  demo.py: Server killed.")
     
-def create_new_client(client_id, host, port):
-    new_client = Client(client_id=client_id, host=host, port=port)
-    new_client.create_client_socket()
-    new_client.connect()
+def create_new_peer(peer_id, host, port):
+    new_peer = Peer(peer_id=peer_id, host=host, port=port)
+    new_peer.create_peer_socket()
+    new_peer.connect()
     time.sleep(1)
-    new_client_thread = threading.Thread(target=client_thread_function, args=(new_client,))
-    new_client_thread.daemon = True
-    new_client_thread.start()
+    new_peer_thread = threading.Thread(target=peer_thread_function, args=(new_peer,))
+    new_peer_thread.daemon = True
+    new_peer_thread.start()
     time.sleep(2)
-    return new_client, new_client_thread 
+    return new_peer, new_peer_thread 
 
 
 
@@ -39,31 +39,31 @@ def start_demo():
     time.sleep(3)
     print()
 
-    client1, client1_thread = create_new_client(1, HOST, PORT)
+    peer1, peer1_thread = create_new_peer(1, HOST, PORT)
     print()
 
-    # Interact with the client from outside the thread (in demo.py)
-    client1.send_message("Hello, server!")
+    # Interact with the peer from outside the thread (in demo.py)
+    peer1.send_message("Hello, server!")
     time.sleep(2)
 
-    client1.send_message("Another message from the main thread.")
+    peer1.send_message("Another message from the main thread.")
     time.sleep(2)
 
-    client1.req_data()
+    peer1.req_chunk()
     time.sleep(2)
     print()
     
-    client2, client2_thread = create_new_client(2, HOST, PORT)
+    peer2, peer2_thread = create_new_peer(2, HOST, PORT)
     print()
-    # Close the client from the main thread
-    client1.close()
-    client2.close()
+    # Close the peer from the main thread
+    peer1.close()
+    peer2.close()
 
     # Wait for the thread to finish
-    client1_thread.join()
-    client2_thread.join()
+    peer1_thread.join()
+    peer2_thread.join()
 
-    print("  demo.py: Client threads have finished.")
+    print("  demo.py: peer threads have finished.")
     print()
 
     stop_server(server_process)
