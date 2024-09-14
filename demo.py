@@ -39,15 +39,17 @@ def start_demo():
     client_thread = threading.Thread(target=client_thread_function, args=(client,))
     client_thread.daemon = True  # Run the thread as a daemon
     client_thread.start()
+    time.sleep(2)
     print()
 
     # Interact with the client from outside the thread (in demo.py)
-    time.sleep(2)
     client.send_message("Hello, server!")
-
     time.sleep(2)
-    client.send_message("Another message from the main thread.")
 
+    client.send_message("Another message from the main thread.")
+    time.sleep(2)
+
+    client.req_data()
     time.sleep(2)
     print()
 

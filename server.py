@@ -1,7 +1,7 @@
 import socket
 import threading
 
-response = 'server_data'
+response = '<server_data_here>'
 data = set()
 # Function to handle communication with a single client
 def handle_client(conn, addr):
@@ -17,11 +17,11 @@ def handle_client(conn, addr):
     
         operation = message[0]
         if operation == '0':
-            print(f'server.py: recv_message call from {addr}')
+            print(f'server.py: Data request received\n           Client addr: {addr}')
             conn.send(response.encode('utf-8'))
             data.add(conn)
         if operation == '1':
-            print(f'server.py: Message received\nClient address: {addr}\nMessage: {message[1:]}\n')
+            print(f'server.py: Message received\n           Client addr: {addr}\n           Message: {message[1:]}\n')
 
 
     # Close the client connection

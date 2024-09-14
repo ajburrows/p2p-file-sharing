@@ -81,11 +81,20 @@ class Client:
 
     def send_message(self, message):
         if self.client_socket:
-            message = "1" + message
+            message = '1' + message
             self.client_socket.send(message.encode('utf-8'))
-            print(f"client.py: Client {self.client_id} sent message: {message[1:]}")
+            print(f'client.py: Client {self.client_id} sent message: {message[1:]}')
         else:
-            raise Exception("client.py: Client is not connected to a server.")
+            raise Exception('client.py: Client is not connected to a server.')
+    
+    def req_data(self):
+        if self.client_socket:
+            print(f'client.py: Client {self.client_id} requesting data')
+            self.client_socket.send('0'.encode('utf-8'))
+            server_data = self.client_socket.recv(1024).decode('utf-8')
+            print(f'client.py: Client {self.client_id} received data\n           data: {server_data}')
+        else:
+            raise Exception('client.py: Client is not connected to a server.')
 
     def close(self):
         if self.client_socket:
