@@ -12,7 +12,7 @@ def handle_client(conn, addr):
 
         # Close the server if the message is NULL (empty)
         if not message:
-            print(f"server.py: Client {addr} disconnected.")
+            print(f"server.py: Client{addr} disconnected.")
             break
     
         operation = message[0]
@@ -20,7 +20,8 @@ def handle_client(conn, addr):
             print(f'server.py: Data request received\n           Client addr: {addr}')
             conn.send(response.encode('utf-8'))
             data.add(conn)
-        if operation == '1':
+
+        elif operation == '1':
             print(f'server.py: Message received\n           Client addr: {addr}\n           Message: {message[1:]}\n')
 
 
