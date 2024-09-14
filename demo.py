@@ -36,7 +36,7 @@ def create_new_client(client_id, host, port):
 
 def start_demo():
     server_process = start_server()
-    time.sleep(2)
+    time.sleep(3)
     print()
 
     client1, client1_thread = create_new_client(1, HOST, PORT)
