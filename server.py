@@ -7,7 +7,7 @@ data_holders = {} # {data_hash:(conn1, conn2, conn3, ...)}
 
 def send_chunk(peer_conn, peer_addr, message):
     # Check if any peers on the network have the data already
-    if not data_holders[requested_data]:
+    if requested_data not in data_holders:
         data_holders[requested_data] = set()
         message = "0" + requested_data # prepend 0 so the peer knows it received the data
         peer_conn.send(message.encode('utf-8'))
@@ -21,8 +21,8 @@ def send_chunk(peer_conn, peer_addr, message):
 
     else:
         # loop through the peers who have the desired data until one successfuly sends the data to the peer_addr
-        for peer in data_holders[requested_data]:
-            message = "1" + peer_addr # prepend 1 so the peer knows it received the address of a peer with the data
+        for cur_peer in data_holders[requested_data]:
+            message = "1" + str(peer_addr[0]) + ":" + str(peer_addr[1]) # prepend 1 so the peer knows it received the address of a peer with the data
             peer_conn.send(message.encode('utf-8'))
             success = peer_conn.recv(1024).decode('utf-8')
             if success == '1':
@@ -33,7 +33,7 @@ def handle_client(conn, addr, client_id):
     print(f"server.py: New connection from {addr}")
     if addr not in clients_dict:
         clients_dict[addr] = client_id
-        print(f'server.py: start hand_client, Clients_Dic: {clients_dict}')
+        print(f'server.py: start handle_client, Clients_Dic: {clients_dict}')
 
     while True:
         message = conn.recv(1024).decode('utf-8')

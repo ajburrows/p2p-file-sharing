@@ -23,7 +23,7 @@ def stop_server(server_process):
     
 def create_new_peer(peer_id, host, port):
     new_peer = Peer(peer_id=peer_id, host=host, port=port)
-    new_peer.create_peer_socket()
+    new_peer.create_server_socket()
     new_peer.connect()
     time.sleep(1)
     new_peer_thread = threading.Thread(target=peer_thread_function, args=(new_peer,))
@@ -55,6 +55,7 @@ def start_demo():
     
     peer2, peer2_thread = create_new_peer(2, HOST, PORT)
     print()
+    peer2.req_chunk()
     # Close the peer from the main thread
     peer1.close()
     peer2.close()
