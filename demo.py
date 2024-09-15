@@ -42,13 +42,6 @@ def start_demo():
     peer1, peer1_thread = create_new_peer(1, HOST, PORT)
     print()
 
-    # Interact with the peer from outside the thread (in demo.py)
-    peer1.send_message("Hello, server!")
-    time.sleep(2)
-
-    peer1.send_message("Another message from the main thread.")
-    time.sleep(2)
-
     peer1.req_chunk()
     time.sleep(2)
     print()

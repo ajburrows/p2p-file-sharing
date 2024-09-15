@@ -59,14 +59,11 @@ class Peer:
         else:
             raise Exception(f'  peer.py: Peer{self.peer_id} is not connected to a server.')
     
-    def unpack_addr(addr):
-        vals = addr.split(":")
-        return vals[0], vals[1]
-
     def req_chunk(self):
         if self.server_socket:
             print(f'  peer.py: Peer{self.peer_id} requesting data')
-            self.server_socket.send('0'.encode('utf-8'))
+            message = '0' + str(self.peer_id) + str(self.port + self.peer_id)# send the server the port of the listener_socket
+            self.server_socket.send(message.encode('utf-8'))
             server_data = self.server_socket.recv(1024).decode('utf-8')
             print(f'  peer.py: Peer{self.peer_id} received data from server\n           data: {server_data}')
             
@@ -81,7 +78,7 @@ class Peer:
                 try:
                     print(f'BEFORE REQUEST: {self.file_data}')
                     print(f'  peer.py: Peer{self.peer_id} connected to peer [{peer_ip}:{peer_port}]')
-                    peer_socket.connect((peer_ip, 12346)) #TODO: the port given represents the server_port of the peer. Get their listening port instead (ask the server)
+                    peer_socket.connect((peer_ip, int(peer_port))) #TODO: the port given represents the server_port of the peer. Get their listening port instead (ask the server)
                     peer_socket.send('2'.encode('utf-8')) # ask the peer for the data (op 2)
                     self.file_data += peer_socket.recv(1024).decode('utf-8') # record the data from the peer
                     print(f'AFTER REQUEST: {self.file_data}')
