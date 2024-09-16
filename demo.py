@@ -65,6 +65,7 @@ def start_demo():
     peer2.close()
     peer3.close()
     print("  demo.py: All peers have closed.")
+    stop_server(server_process)
     peer1_thread.join()
     peer2_thread.join()
     peer3_thread.join()
@@ -96,7 +97,6 @@ def start_demo():
     print("  demo.py: peer threads have finished.")
     print()
 
-    stop_server(server_process)
 
 if __name__ == '__main__':
     start_demo()

@@ -18,24 +18,44 @@ class Peer:
         print(f'  peer.py: Peer{self.peer_id} listening port: {self.port+self.peer_id}')
         self.listener_socket.bind((self.host, self.port + self.peer_id))
         self.listener_socket.listen(5)
+        self.listener_socket.settimeout(3.0)
+
         print(f'  peer.py: Peer{self.peer_id} listening on port {self.port + self.peer_id}')
+
+        handler_threads = []
         while self.is_running:
-            conn, addr = self.listener_socket.accept()
-            thread = threading.Thread(target=self.handle_peer_request, args=(conn, addr))
-            thread.start()
+            try:
+                conn, addr = self.listener_socket.accept()
+                thread = threading.Thread(target=self.handle_peer_request, args=(conn, addr))
+                handler_threads.append(thread)
+                thread.start()
+            except socket.timeout:
+                continue
+            except OSError as e:
+                print(f'  peer.py: accept() failed with OSError: {e}')
+                break
+        
+        for thread in handler_threads:
+            thread.join()
     
     def handle_peer_request(self, conn, addr):
         print(f'  peer.py: Peer{self.peer_id} received connection from {addr}')
-        conn.settimeout(5.0)
-        while self.is_running:
-            data = conn.recv(1024).decode('utf-8')
-            if not data:
-                break
-            print(f'  peer.py: Peer{self.peer_id} Received data from {addr}\n           data: {data}')
+        conn.settimeout(4.0)
+        while True:
+            try:
+                data = conn.recv(1024).decode('utf-8')
+                if not data:
+                    break
+                print(f'  peer.py: Peer{self.peer_id} Received data from {addr}\n           data: {data}')
 
-            # if data starts with "2", the peer is requesting file_data
-            if data[0] == '2':
-                conn.send(self.file_data.encode('utf-8'))
+                # if data starts with "2", the peer is requesting file_data
+                if data[0] == '2':
+                    conn.send(self.file_data.encode('utf-8'))
+                    break
+            except socket.timeout:
+                continue
+            except (OSError, ConnectionResetError) as e:
+                print(f'  peer.py: Exception in handle_peer_request: {e}')
                 break
         conn.close()
         print(f'  peer.py: Peer{self.peer_id} conn closed')
