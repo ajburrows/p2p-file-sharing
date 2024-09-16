@@ -41,21 +41,57 @@ def start_demo():
 
     peer1, peer1_thread = create_new_peer(1, HOST, PORT)
     print()
+    peer2, peer2_thread = create_new_peer(2, HOST, PORT)
+    print()
+    peer3, peer3_thread = create_new_peer(3, HOST, PORT)
+    print()
+
+    peer1.req_chunk()
+    time.sleep(2)
+    print()
+
+    peer2.req_chunk()
+    time.sleep(2)
+    print()
+
+    peer1.close()
+    time.sleep(2)
+    print()
+
+    peer3.req_chunk()
+    time.sleep(2)
+    print()
+
+    peer2.close()
+    peer3.close()
+    print("  demo.py: All peers have closed.")
+    peer1_thread.join()
+    peer2_thread.join()
+    peer3_thread.join()
+    print("  demo.py: All peer threads have terminated.")
+    """print()
+    #peer2, peer2_thread = create_new_peer(2, HOST, PORT)
+    print()
+    #peer3, peer3_thread = create_new_peer(3, HOST, PORT)
+    print()
 
     peer1.req_chunk()
     time.sleep(2)
     print()
     
-    peer2, peer2_thread = create_new_peer(2, HOST, PORT)
+    #peer2.req_chunk()
     print()
-    peer2.req_chunk()
+    #peer3.req_chunk()
     # Close the peer from the main thread
+    time.sleep(3)
     peer1.close()
-    peer2.close()
+    print()
 
-    # Wait for the thread to finish
-    peer1_thread.join()
-    peer2_thread.join()
+
+    #peer2.close()
+    #peer3.close()
+
+    # Wait for the thread to finish"""
 
     print("  demo.py: peer threads have finished.")
     print()

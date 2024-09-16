@@ -22,7 +22,10 @@ def send_chunk(peer_conn, peer_id, message):
 
     else:
         # loop through the peers who have the desired data until one successfuly sends the data to the peer_addr
+        print(f"server.py: data_holders = str({data_holders})")
         for cur_peer_id in data_holders[requested_data]:
+            print(f'server.py: cur_peer_id: {cur_peer_id}')
+            print(f'server.py: peers = {str(peers)}')
             message = "1" + str(peers[cur_peer_id][1][0]) + ":" + str(peers[cur_peer_id][1][1]) # prepend 1 so the peer knows it received the address of a peer with the data
             peer_conn.send(message.encode('utf-8'))
             success = peer_conn.recv(1024).decode('utf-8')
@@ -39,9 +42,10 @@ def handle_peer(conn, addr):
 
         # Close the server if the message is NULL (empty)
         if not message:
-            if peer_id:
-                print(f"server.py: Peer{addr} disconnected.")
+            if peer_id in peers:
+                print(f"server.py: Peer{peer_id} disconnected.")
                 del peers[peer_id]
+                data_holders[requested_data].discard(peer_id)
                 break
             else:
                 print(f"Null message recieved from unknown peer")
@@ -60,6 +64,7 @@ def handle_peer(conn, addr):
 
         elif operation == '1':
             print(f'server.py: Message received from Peer{peers[addr]}\n           Peer addr: {addr}\n           Message: {message[1:]}\n')
+    conn.close()
     print(f'server.py: end of handle_peer, peers: {peers}')
 
 

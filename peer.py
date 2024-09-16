@@ -15,7 +15,7 @@ class Peer:
 
     def start_listening(self):
         self.listener_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print(f'TESTING: port {self.port+self.peer_id}')
+        print(f'  peer.py: Peer{self.peer_id} listening port: {self.port+self.peer_id}')
         self.listener_socket.bind((self.host, self.port + self.peer_id))
         self.listener_socket.listen(5)
         print(f'  peer.py: Peer{self.peer_id} listening on port {self.port + self.peer_id}')
@@ -25,8 +25,9 @@ class Peer:
             thread.start()
     
     def handle_peer_request(self, conn, addr):
-        print(f'  peer.py: Received connection from {addr}')
-        while True:
+        print(f'  peer.py: Peer{self.peer_id} received connection from {addr}')
+        conn.settimeout(5.0)
+        while self.is_running:
             data = conn.recv(1024).decode('utf-8')
             if not data:
                 break
@@ -37,7 +38,7 @@ class Peer:
                 conn.send(self.file_data.encode('utf-8'))
                 break
         conn.close()
-        print('Peer conn closed')
+        print(f'  peer.py: Peer{self.peer_id} conn closed')
 
     def get_peer_id(self):
         return self.peer_id
@@ -59,6 +60,11 @@ class Peer:
         else:
             raise Exception(f'  peer.py: Peer{self.peer_id} is not connected to a server.')
     
+    def verify_data(self, data):
+        if data == '<server_data_here>':
+            return True
+        return False
+
     def req_chunk(self):
         if self.server_socket:
             print(f'  peer.py: Peer{self.peer_id} requesting data')
@@ -76,19 +82,23 @@ class Peer:
                 peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
                 try:
-                    print(f'BEFORE REQUEST: {self.file_data}')
                     print(f'  peer.py: Peer{self.peer_id} connected to peer [{peer_ip}:{peer_port}]')
                     peer_socket.connect((peer_ip, int(peer_port))) #TODO: the port given represents the server_port of the peer. Get their listening port instead (ask the server)
                     peer_socket.send('2'.encode('utf-8')) # ask the peer for the data (op 2)
                     self.file_data += peer_socket.recv(1024).decode('utf-8') # record the data from the peer
-                    print(f'AFTER REQUEST: {self.file_data}')
+                    print(f'  peer.py: Peer{self.peer_id} now has file_data: {self.file_data}')
                 except ConnectionRefusedError:
                     print(f'  peer.py: Peer{self.peer_id} failed to connect to peer [{peer_ip}:{peer_port}]')
                 finally:
                     peer_socket.close()
                     print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
 
-            self.server_socket.send('1'.encode('utf-8')) # tell the server the data was recieved
+            if self.verify_data(self.file_data):
+                self.server_socket.send('1'.encode('utf-8')) # tell the server the data was recieved
+            else:
+                #TODO: if invalid data is received, wait for another response from server (either another ip address or the file_data)
+                print(f'  peer.py: Peer{self.peer_id} received invalid data from peer [{peer_ip}:{peer_port}]')
+                self.server_socket.send('0'.encode('utf-8'))
 
         else:
             raise Exception('  peer.py: Peer is not connected to a server.')
@@ -96,11 +106,10 @@ class Peer:
     def close(self):
         if self.server_socket:
             self.server_socket.close()
+        if self.listener_socket:
             self.listener_socket.close()
-            self.is_running = False
-            print(f"  peer.py: Peer{self.peer_id} sockets closed.")
-        else:
-            raise Exception("  peer.py: Peer socket was never created or is already closed.")
+        self.is_running = False
+        print(f"  peer.py: Peer{self.peer_id} sockets closed.")
 
     def run_in_background(self):
         self.start_listening()
