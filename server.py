@@ -29,7 +29,7 @@ def send_chunk(peer_conn, peer_id, message):
             message = "1" + str(peers[cur_peer_id][1][0]) + ":" + str(peers[cur_peer_id][1][1]) # prepend 1 so the peer knows it received the address of a peer with the data
             peer_conn.send(message.encode('utf-8'))
             success = peer_conn.recv(1024).decode('utf-8')
-            if success == '1':
+            if success == '2':
                 data_holders[requested_data].add(peer_id)
                 break
 

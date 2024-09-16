@@ -24,7 +24,7 @@ def stop_server(server_process):
 def create_new_peer(peer_id, host, port):
     new_peer = Peer(peer_id=peer_id, host=host, port=port)
     new_peer.create_server_socket()
-    new_peer.connect()
+    new_peer.connect_to_server()
     time.sleep(1)
     new_peer_thread = threading.Thread(target=peer_thread_function, args=(new_peer,))
     new_peer_thread.daemon = True
@@ -54,7 +54,7 @@ def start_demo():
     time.sleep(2)
     print()
 
-    peer1.close()
+    peer1.close_peer()
     time.sleep(2)
     print()
 
@@ -62,40 +62,14 @@ def start_demo():
     time.sleep(2)
     print()
 
-    peer2.close()
-    peer3.close()
+    peer2.close_peer()
+    peer3.close_peer()
     print("  demo.py: All peers have closed.")
     stop_server(server_process)
     peer1_thread.join()
     peer2_thread.join()
     peer3_thread.join()
     print("  demo.py: All peer threads have terminated.")
-    """print()
-    #peer2, peer2_thread = create_new_peer(2, HOST, PORT)
-    print()
-    #peer3, peer3_thread = create_new_peer(3, HOST, PORT)
-    print()
-
-    peer1.req_chunk()
-    time.sleep(2)
-    print()
-    
-    #peer2.req_chunk()
-    print()
-    #peer3.req_chunk()
-    # Close the peer from the main thread
-    time.sleep(3)
-    peer1.close()
-    print()
-
-
-    #peer2.close()
-    #peer3.close()
-
-    # Wait for the thread to finish"""
-
-    print("  demo.py: peer threads have finished.")
-    print()
 
 
 if __name__ == '__main__':
