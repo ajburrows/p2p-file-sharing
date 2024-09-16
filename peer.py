@@ -16,10 +16,11 @@ class Peer:
     def start_listening(self):
         self.listener_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print(f'  peer.py: Peer{self.peer_id} listening port: {self.port+self.peer_id}')
+
+        self.listener_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.listener_socket.bind((self.host, self.port + self.peer_id))
         self.listener_socket.listen(5)
         self.listener_socket.settimeout(3.0)
-
         print(f'  peer.py: Peer{self.peer_id} listening on port {self.port + self.peer_id}')
 
         handler_threads = []
@@ -40,6 +41,7 @@ class Peer:
     
     def handle_peer_request(self, conn, addr):
         print(f'  peer.py: Peer{self.peer_id} received connection from {addr}')
+
         conn.settimeout(4.0)
         while True:
             try:
