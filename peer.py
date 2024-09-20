@@ -3,17 +3,19 @@ import socket
 import time
 
 class Peer:
-    def __init__(self, peer_id, host, port):
+    def __init__(self, peer_id, host, port, files_dir):
         """
             Inputs:
                         peer_id - an integer used to identify the peer and help with debugging (int)
                            host - the ip address of the central server (string)
                            port - the port number of the central server (int)
+                      files_dir - the root files path of the directory containing the files that this peer will share
             
             Variables:
                         peer_id - an integer used to identify the peer and help with debugging (int)
                            host - the ip address of the central server (string)
                            port - the port number of the central server (int)
+                      files_dir - the root files path of the directory containing the files that this peer will share
                  server_ socket - a socket used specifically for communicating with the central server
                 listener_socket - a socket used for recieving requests from other peers
                      is_running - a flag that is set to False when close_peer() is called to shut down the instance of the peer
@@ -24,11 +26,12 @@ class Peer:
         self.peer_id = peer_id
         self.host = host
         self.port = port
+        self.files_dir = files_dir
         self.server_socket = None
         self.listener_socket = None
         self.is_running = True
         self.file_data = ''
-        print(f'  peer.py: Created new peer id: {peer_id}, host: {host}, port: {port}')
+        print(f'  peer.py: Created new peer id: {peer_id}, host: {host}, port: {port}, file_dir: {files_dir}')
 
     def start_listening(self):
         """
