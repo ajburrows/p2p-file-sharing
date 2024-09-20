@@ -6,8 +6,8 @@ import subprocess
 HOST = '127.0.0.1'
 PORT = 12345
 
-def start_server():
-    server_process = subprocess.Popen(['python3', 'server.py'])
+def start_server(files_directory):
+    server_process = subprocess.Popen(['python3', 'server.py', files_directory])
     return server_process
 
 def stop_server(server_process):
@@ -35,7 +35,8 @@ def create_new_peer(peer_id, host, port):
 
 
 def start_demo():
-    server_process = start_server()
+    files_directory = input("  demo.py: Enter seed file directory:")
+    server_process = start_server(files_directory)
     time.sleep(3)
     print()
 
@@ -47,7 +48,7 @@ def start_demo():
     print()
 
     peer1.req_chunk()
-    time.sleep(2)
+    time.sleep(4)
     print()
 
     peer2.req_chunk()

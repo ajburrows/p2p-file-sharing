@@ -1,5 +1,7 @@
 import socket
 import threading
+import os
+import sys
 
 requested_data = '<server_data_here>'
 peers = {} # {peer_id:(server_addr, listening_addr)} --> addr stored as (ip_addr, port_number)
@@ -17,12 +19,13 @@ def send_chunk(peer_conn, peer_id, message):
         success = peer_conn.recv(1024).decode('utf-8')
         if success == "1":
             data_holders[requested_data].add(peer_id)
+            print(f'server.py: send_chunk to peer{peer_id} succeeded\n           message: {message}')
         else:
             Exception(f'server.py: send_chunk failed\n           peer_addr: {peer_addrs[0]}\n           message: {message}')
 
     else:
         # loop through the peers who have the desired data until one successfuly sends the data to the peer_addr
-        print(f"server.py: data_holders = str({data_holders})")
+        print(f"server.py: data_holders = {data_holders}")
         for cur_peer_id in data_holders[requested_data]:
             print(f'server.py: cur_peer_id: {cur_peer_id}')
             print(f'server.py: peers = {str(peers)}')
@@ -61,6 +64,7 @@ def handle_peer(conn, addr):
         if operation == '0':
             print(f'server.py: Data request received from Peer{peer_id}\n           Peer addrs: {peers[peer_id]}')
             send_chunk(conn, peer_id, message)
+            data_holders[requested_data].add(peer_id)
 
         elif operation == '1':
             print(f'server.py: Message received from Peer{peers[addr]}\n           Peer addr: {addr}\n           Message: {message[1:]}\n')
@@ -72,10 +76,42 @@ def handle_peer(conn, addr):
 def close_server(conn):
     conn.close()
 
+
+def file_to_chunks(file_path, chunk_size):
+    """
+        inputs:
+            file_path - root path of the directory containing files for the server to upload.
+            chunk_size - the files will be split up into chunks of this size in bytes
+
+        outputs:
+
+    """
+    chunk_dict = {}
+    i = 0
+    with open(file_path, 'rb') as file:
+        while i >= 0:
+            chunk = file.read(chunk_size)
+            if not chunk:
+                break
+            chunk_dict[i] = chunk
+            i += 1
+
+    return chunk_dict
+
 # Server setup to handle multiple peers
-def start_server():
+def start_server(files_directory):
     host = '127.0.0.1'  # Localhost
     port = 12345        # Non-privileged port
+
+    # break all files in the directory into chunks and store them in files
+    files = {}
+    for file in os.listdir(files_directory):
+        # Create full path to the entry
+        full_path = os.path.join(files_directory, file)
+        # Check if the entry is a file
+        if os.path.isfile(full_path):
+            files[file] = file_to_chunks(full_path, 1024)
+    print(f'server.py: files - {files}')
 
     # Create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -96,5 +132,8 @@ def start_server():
         peer_thread.start()
 
 if __name__ == '__main__':
-    start_server()
-
+    if len(sys.argv) < 2:
+        print("server.py: python server.py <files_directory>")
+        sys.exit(1)
+    files_directory = os.path.abspath(sys.argv[1])
+    start_server(files_directory)

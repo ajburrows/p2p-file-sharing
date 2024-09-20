@@ -225,6 +225,8 @@ class Peer:
             # If the response begins with 0, the following data in the message is the required chunk
             if server_data[0] == '0':
                 self.file_data += server_data[1:]
+                if self.verify_data(self.file_data):
+                    self.server_socket.send('2'.encode('utf-8'))
             
             # If server_data starts with "1", then this peer must get the data from another peer
             # The ip and port number of that peer's listening_socket is given in the server's message after the 1
@@ -237,6 +239,7 @@ class Peer:
                     print(f'  peer.py: Peer{self.peer_id} connected to peer [{peer_ip}:{peer_port}]')
                     peer_socket.connect((peer_ip, int(peer_port)))
                     peer_socket.send('2'.encode('utf-8'))
+                    self.file_data += peer_socket.recv(1024).decode('utf-8') # record the data from the peer
                     print(f'  peer.py: Peer{self.peer_id} now has file_data: {self.file_data}')
 
 
@@ -247,14 +250,13 @@ class Peer:
                     print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
 
 
-            # verify the integrity of the data
-            if self.verify_data(self.file_data):
-                self.server_socket.send('2'.encode('utf-8')) # tell the server the data was recieved
-                self.file_data += peer_socket.recv(1024).decode('utf-8') # record the data from the peer
-            else:
-                #TODO: if invalid data is received, wait for another response from server (either another ip address or the file_data)
-                print(f'  peer.py: Peer{self.peer_id} received invalid data from peer [{peer_ip}:{peer_port}]')
-                self.server_socket.send('0'.encode('utf-8'))
+                # verify the integrity of the data
+                if self.verify_data(self.file_data):
+                    self.server_socket.send('2'.encode('utf-8')) # tell the server the data was recieved
+                else:
+                    #TODO: if invalid data is received, wait for another response from server (either another ip address or the file_data)
+                    print(f'  peer.py: Peer{self.peer_id} received invalid data from peer [{peer_ip}:{peer_port}]')
+                    self.server_socket.send('0'.encode('utf-8'))
 
         else:
             raise Exception('  peer.py: Peer is not connected to a server.')
