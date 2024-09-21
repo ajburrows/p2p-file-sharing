@@ -14,6 +14,7 @@ OPCODE_REQ_CHUNK_FROM_PEER = '2'
 OPCODE_VALID_DATA_RECEIVED ='2'
 
 OPCODE_UPLOAD_FILE_DATA = '3' # Peer tells the server what files it has - sends file's name and its number of chunks
+OPCODE_DOWNLOAD_FILE_FROM_SERVER = '4'
 
 class Peer:
     def __init__(self, peer_id, host, port, files_dir):
@@ -189,7 +190,7 @@ class Peer:
             # Check if the entry is a file
             if os.path.isfile(full_path):
                 self.files[file] = self.file_to_chunks(full_path, 8)
-        print(f'  peer.py: files - {self.files}')
+        #print(f'  peer.py: files - {self.files}')
         
 
     def file_to_chunks(self, file_path, chunk_size):
@@ -273,6 +274,79 @@ class Peer:
             This method makes that header using the OPCODE passed in
         """
         return opcode + str(self.peer_id) + '#' + str(self.port + self.peer_id) + '#'
+
+
+    def req_chunk2(self):
+        # If the server_socket is closed, throw an exception
+        if self.server_socket:
+            print(f'  peer.py: Peer{self.peer_id} requesting data')
+
+            # Prepend 0 to tell the server this peer is requesting data
+            # Send the server the port of the listener_socket (self.port + self.peer_id)
+            message = self.make_message_header(OPCODE_REQ_CHUNK_FROM_SERVER)
+            self.server_socket.send(message.encode('utf-8'))
+
+            # wait for response from the server
+            server_data = self.server_socket.recv(1024).decode('utf-8')
+            print(f'  peer.py: Peer{self.peer_id} received data from server\n           data: {server_data}')
+            
+            # If the response begins with 0, the following data in the message is the required chunk
+            if server_data[0] == OPCODE_FILE_DATA_RECEIVED:
+                self.file_data += server_data[1:]
+                if self.verify_data(self.file_data):
+                    self.server_socket.send(self.make_message_header(OPCODE_VALID_DATA_RECEIVED).encode('utf-8'))
+            
+            # If server_data starts with "1", then this peer must get the data from another peer
+            # The ip and port number of that peer's listening_socket is given in the server's message after the 1
+            elif server_data[0] == OPCODE_PEER_ADDR_RECEIVED:
+                peer_ip, peer_port = server_data[1:].split(':')[0], server_data[1:].split(':')[1]
+                peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+                # Connect to the peer and download the data from them
+                try:
+                    print(f'  peer.py: Peer{self.peer_id} connected to peer [{peer_ip}:{peer_port}]')
+                    peer_socket.connect((peer_ip, int(peer_port)))
+                    peer_socket.send(self.make_message_header(OPCODE_REQ_CHUNK_FROM_PEER).encode('utf-8'))
+                    self.file_data += peer_socket.recv(1024).decode('utf-8') # record the data from the peer
+                    print(f'  peer.py: Peer{self.peer_id} now has file_data: {self.file_data}')
+
+
+                except ConnectionRefusedError:
+                    print(f'  peer.py: Peer{self.peer_id} failed to connect to peer [{peer_ip}:{peer_port}]')
+                finally:
+                    peer_socket.close()
+                    print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
+
+
+                # verify the integrity of the data
+                if self.verify_data(self.file_data):
+                    self.server_socket.send(self.make_message_header(OPCODE_VALID_DATA_RECEIVED).encode('utf-8')) # tell the server the data was recieved
+                else:
+                    #TODO: if invalid data is received, wait for another response from server (either another ip address or the file_data)
+                    print(f'  peer.py: Peer{self.peer_id} received invalid data from peer [{peer_ip}:{peer_port}]')
+                    self.server_socket.send(self.make_message_header(OPCODE_INVALID_DATA_RECEIVED).encode('utf-8'))
+
+        else:
+            raise Exception('  peer.py: Peer is not connected to a server.')
+
+
+    def download_file(self, file_name):
+        """
+            Inputs:
+                file_name - this is the name of the file that the peer wants to download
+
+            Description:
+                The peer tells the server it wants a file. The server will then repeatedly send  the chunk number that should be 
+                downloaded and the contact information of a peer with that chunk. This will continue until every chunk has been
+                downloaded or there are no peers left on the network with the needed chunks.
+
+        """
+
+        # tell the server which file this peer wants
+        message = self.make_message_header(OPCODE_DOWNLOAD_FILE_FROM_SERVER) + file_name
+        self.server_socket.send(message.encode('utf-8'))
+
+        
 
 
     def req_chunk(self):
