@@ -3,14 +3,17 @@ import socket
 import time
 import os
 
-OPCODE_UPLOAD_FILE_DATA = '0'
-OPCODE_SEND_SERVER_MESSAGE = '1'
 OPCODE_REQ_CHUNK_FROM_SERVER = '0'
 OPCODE_INVALID_DATA_RECEIVED = '0'
+OPCODE_FILE_DATA_RECEIVED = '0'
+
+OPCODE_SEND_SERVER_MESSAGE = '1'
+OPCODE_PEER_ADDR_RECEIVED = '1'
+
 OPCODE_REQ_CHUNK_FROM_PEER = '2'
 OPCODE_VALID_DATA_RECEIVED ='2'
-OPCODE_FILE_DATA_RECEIVED = '0'
-OPCODE_PEER_ADDR_RECEIVED = '1'
+
+OPCODE_UPLOAD_FILE_DATA = '3' # Peer tells the server what files it has - sends file's name and its number of chunks
 
 class Peer:
     def __init__(self, peer_id, host, port, files_dir):
@@ -150,10 +153,17 @@ class Peer:
     #TODO: implement THIS!!!!:w
     def upload_file_data(self):
         # tell server what files I have (name of file + number of chunks)
+        message = OPCODE_UPLOAD_FILE_DATA
+        for file_name in self.files:
+            file_name_length = str(len(file_name))
+            num_chunks = str(len(self.files[file_name]))
 
+            # pound signs are a delimiter to tell the server when the file_name_length and num_chunks end
+            message += file_name_length + '#' + file_name + num_chunks + '#' 
         
+        print(f'  peer.py: Peer{self.peer_id} uploading file data to server\n           message: {message}')
+        self.server_socket.send(message.encode('utf-8'))
 
-        return None
 
     def initialize_files(self):
         # break all files in the directory into chunks and store them in files
@@ -165,6 +175,7 @@ class Peer:
                 self.files[file] = self.file_to_chunks(full_path, 8)
         print(f'  peer.py: files - {self.files}')
         
+
     def file_to_chunks(self, file_path, chunk_size):
         """
             inputs:
@@ -175,6 +186,7 @@ class Peer:
                 chunk_dict - a dictionary that enumerates the files chunks {1:'chunk1_data', 2:'chunk2_data', 3:'chunk3_data', ...}
 
         """
+
         chunk_dict = {}
         i = 0
         with open(file_path, 'rb') as file:

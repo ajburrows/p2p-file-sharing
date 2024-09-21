@@ -49,9 +49,9 @@ def handle_peer(conn, addr):
                 print(f"server.py: Peer{peer_id} disconnected.")
                 del peers[peer_id]
                 data_holders[requested_data].discard(peer_id)
-                break
             else:
                 print(f"Null message recieved from unknown peer")
+            break
 
         operation = message[0]
         peer_id = message[1]
@@ -78,7 +78,7 @@ def close_server(conn):
 
 
 # Server setup to handle multiple peers
-def start_server(files_directory):
+def start_server():
     host = '127.0.0.1'  # Localhost
     port = 12345        # Non-privileged port
 
@@ -101,8 +101,4 @@ def start_server(files_directory):
         peer_thread.start()
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("server.py: python server.py <files_directory>")
-        sys.exit(1)
-    files_directory = os.path.abspath(sys.argv[1])
-    start_server(files_directory)
+    start_server()

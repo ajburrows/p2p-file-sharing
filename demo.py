@@ -6,8 +6,8 @@ import subprocess
 HOST = '127.0.0.1'
 PORT = 12345
 
-def start_server(files_directory):
-    server_process = subprocess.Popen(['python3', 'server.py', files_directory])
+def start_server():
+    server_process = subprocess.Popen(['python3', 'server.py'])
     return server_process
 
 def stop_server(server_process):
@@ -53,7 +53,7 @@ def start_demo():
 
     peer1.initialize_files()
 
-    #peer1.upload_file_data()
+    peer1.upload_file_data()
 
     peer1.req_chunk()
     time.sleep(4)
@@ -80,7 +80,33 @@ def start_demo():
     peer3_thread.join()
     print("  demo.py: All peer threads have terminated.")
 
+def test_upload_file_data():
+    peer1_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files1'
+
+    server_process = start_server()
+    time.sleep(3)
+    print()
+
+    peer1, peer1_thread = create_new_peer(1, HOST, PORT, peer1_files_dir)
+    print()
+
+    peer1.initialize_files()
+
+    peer1.upload_file_data()
+    print()
+    print('  demo.py: data uploaded')
+
+    peer1.close_peer()
+    time.sleep(2)
+    print()
+    print("  demo.py: peer1 has closed.")
+    stop_server(server_process)
+    peer1_thread.join()
+    print("  demo.py: All peer threads have terminated.")
+
 
 if __name__ == '__main__':
-    start_demo()
+    #start_demo()
+    test_upload_file_data()
+
 
