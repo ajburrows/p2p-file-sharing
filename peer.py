@@ -1,14 +1,8 @@
 import threading
 import socket
 import time
-"""
+import os
 
-                0 - tell the server this peer wants the data, and send this peer's listening address
-                0 - tell the server that invalid data was received
-                2 - tell another peer that this peer wants the data
-                2 - tell the server that the chunk was successfully received
-
-"""
 OPCODE_UPLOAD_FILE_DATA = '0'
 OPCODE_SEND_SERVER_MESSAGE = '1'
 OPCODE_REQ_CHUNK_FROM_SERVER = '0'
@@ -36,6 +30,7 @@ class Peer:
                 listener_socket - a socket used for recieving requests from other peers
                      is_running - a flag that is set to False when close_peer() is called to shut down the instance of the peer
                       file_data - this is where the data being downloaded from other peers is stored
+                      files - a dictionary that stores the files as chunks
 
         """
 
@@ -47,6 +42,7 @@ class Peer:
         self.listener_socket = None
         self.is_running = True
         self.file_data = ''
+        self.files = {}
         print(f'  peer.py: Created new peer id: {peer_id}, host: {host}, port: {port}, file_dir: {files_dir}')
 
     def start_listening(self):
@@ -150,12 +146,52 @@ class Peer:
         time.sleep(2)
         print(f'  peer.py: Created socket for Peer{self.peer_id}')
 
+
+    #TODO: implement THIS!!!!:w
     def upload_file_data(self):
+        # tell server what files I have (name of file + number of chunks)
+
+        
+
         return None
+
+    def initialize_files(self):
+        # break all files in the directory into chunks and store them in files
+        for file in os.listdir(self.files_dir):
+            # Create full path to the entry
+            full_path = os.path.join(self.files_dir, file)
+            # Check if the entry is a file
+            if os.path.isfile(full_path):
+                self.files[file] = self.file_to_chunks(full_path, 8)
+        print(f'  peer.py: files - {self.files}')
+        
+    def file_to_chunks(self, file_path, chunk_size):
+        """
+            inputs:
+                file_path - root path of the directory containing files for this peer to upload.
+                chunk_size - the files will be split up into chunks of this size in bytes
+
+            outputs:
+                chunk_dict - a dictionary that enumerates the files chunks {1:'chunk1_data', 2:'chunk2_data', 3:'chunk3_data', ...}
+
+        """
+        chunk_dict = {}
+        i = 0
+        with open(file_path, 'rb') as file:
+            while i >= 0:
+                chunk = file.read(chunk_size)
+                if not chunk:
+                    break
+                chunk_dict[i] = chunk
+                i += 1
+
+        return chunk_dict
+
 
     def connect_to_server(self):
         """
             Connects the peer to the central server using the designated server_socket
+
         """
 
         self.server_socket.connect((self.host, self.port))

@@ -77,42 +77,10 @@ def close_server(conn):
     conn.close()
 
 
-def file_to_chunks(file_path, chunk_size):
-    """
-        inputs:
-             file_path - root path of the directory containing files for the server to upload.
-            chunk_size - the files will be split up into chunks of this size in bytes
-
-        outputs:
-            chunk_dict - a dictionary that enumerates the files chunks {1:'chunk1_data', 2:'chunk2_data', 3:'chunk3_data', ...}
-
-    """
-    chunk_dict = {}
-    i = 0
-    with open(file_path, 'rb') as file:
-        while i >= 0:
-            chunk = file.read(chunk_size)
-            if not chunk:
-                break
-            chunk_dict[i] = chunk
-            i += 1
-
-    return chunk_dict
-
 # Server setup to handle multiple peers
 def start_server(files_directory):
     host = '127.0.0.1'  # Localhost
     port = 12345        # Non-privileged port
-
-    # break all files in the directory into chunks and store them in files
-    files = {}
-    for file in os.listdir(files_directory):
-        # Create full path to the entry
-        full_path = os.path.join(files_directory, file)
-        # Check if the entry is a file
-        if os.path.isfile(full_path):
-            files[file] = file_to_chunks(full_path, 8)
-    print(f'server.py: files - {files}')
 
     # Create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

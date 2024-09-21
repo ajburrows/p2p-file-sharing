@@ -51,6 +51,10 @@ def start_demo():
     peer3, peer3_thread = create_new_peer(3, HOST, PORT, peer3_files_dir)
     print()
 
+    peer1.initialize_files()
+
+    #peer1.upload_file_data()
+
     peer1.req_chunk()
     time.sleep(4)
     print()
