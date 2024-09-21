@@ -152,6 +152,14 @@ class Peer:
 
     #TODO: implement THIS!!!!:w
     def upload_file_data(self):
+        """
+            Description:
+                Send a message to the server telling it what files this peer has by giving it a string containing the name of each
+                file in self.files as well as the number of chunks that file is broken into.
+
+                The string uses the # character to tell the server when the file_name and num_chunks values end.
+        
+        """
         # tell server what files I have (name of file + number of chunks)
         message = OPCODE_UPLOAD_FILE_DATA
         for file_name in self.files:
@@ -166,6 +174,14 @@ class Peer:
 
 
     def initialize_files(self):
+        """
+            Description:
+                The files that peers share with the network are stored in a single directory that is held in self.files_dir.
+                This method loops through each of the files in that directory and breaks the files into chunks. The chunks
+                are stored in the self.files dictionary.
+
+        """
+
         # break all files in the directory into chunks and store them in files
         for file in os.listdir(self.files_dir):
             # Create full path to the entry
