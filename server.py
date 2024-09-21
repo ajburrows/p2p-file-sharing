@@ -7,10 +7,12 @@ OPCODE_RECORD_FILE_DATA = '3' # Received by peers when they connect and tell the
 requested_data = '<server_data_here>'
 peers = {} # {peer_id:(server_addr, listening_addr)} --> addr stored as (ip_addr, port_number)
 data_holders = {} # {data_hash:(peer_id1, peer_id2, peer_id3, ...)} --> peer IDs stored in set
+
 file_holders = {} # {file1_name: {chunk_1: (peer_id1, peer_id2, ...), chunk_2: (peer_id1, peer_id2, ...)}, file2_name: {...}, ...}
                   # ^--> dictionary of file names. Within each file there is another dictionary containing the chunk and a set of
                   #      which peers have that chunk. The number of chunks in a file can be found by dining the length of the
                   #      set stored under the file_name
+                  #      file_name is a string, the chunk number is an int, and the peer IDs are ints
 
 def send_chunk(peer_conn, peer_id, message):
     # Check if any peers on the network have the data already
@@ -69,7 +71,53 @@ def get_peer_contact_info(message):
         i += 1
 
     peer_port = int(cur_substring)
-    return peer_id, peer_port
+    return peer_id, peer_port, message[i:]
+
+def record_file_data(message, peer_id):
+    i = 0
+
+    # loop through the different files in the message
+    while i < len(message):
+        # get length of the file name 
+        cur_substring = ''
+        while i < len(message):
+            if message[i] == '#':
+                i += 1
+                break
+            cur_substring += message[i]
+            i += 1
+
+        file_name_length = int(cur_substring)
+        cur_file_name = message[i:i+file_name_length] # store the substring of message that contains the file name
+
+        # get number of chunks in the file
+        i += file_name_length
+        cur_substring = ''
+        while i < len(message):
+            if message[i] == '#':
+                i += 1
+                break
+            cur_substring += message[i]
+            i += 1
+        num_chunks = int(cur_substring)
+
+
+        # initialize/ update the file's entry in the files dictionary
+        if cur_file_name in file_holders:
+            chunk_set = file_holders[cur_file_name]
+            for chunk_num in chunk_set:
+                chunk_set[chunk_num].add(peer_id)
+        else:
+            file_holders[cur_file_name] = {}
+            chunk_set = file_holders[cur_file_name]
+            for j in range(num_chunks):
+                chunk_set[j] = set()
+                chunk_set[j].add(peer_id)
+    
+    print(f'\nserver.py: File data recorded from Peer{peer_id}\n           file_holders: {file_holders}\n')
+
+
+            
 
 
 # Function to handle communication with a single peer
@@ -90,7 +138,8 @@ def handle_peer(conn, addr):
             break
 
         operation = message[0]
-        peer_id, peer_listening_port = get_peer_contact_info(message[1:])
+        peer_id, peer_listening_port, message = get_peer_contact_info(message[1:])
+        print(f'\nserver.py: TESTING MESSAGE\n           peerID: {peer_id}\n           portNum: {peer_listening_port}\n           message: {message}\n')
         if peer_id not in peers:
             peers[peer_id] = (addr, (addr[0], peer_listening_port))
             print(f'server.py: start handle_peer, peers: {peers}')
@@ -104,6 +153,10 @@ def handle_peer(conn, addr):
 
         elif operation == '1':
             print(f'server.py: Message received from Peer{peers[addr]}\n           Peer addr: {addr}\n           Message: {message[1:]}\n')
+
+        elif operation == OPCODE_RECORD_FILE_DATA:
+            record_file_data(message, peer_id)
+
     conn.close()
     print(f'server.py: end of handle_peer, peers: {peers}')
 

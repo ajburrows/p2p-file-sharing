@@ -102,7 +102,7 @@ def test_upload_file_data():
 
 
 if __name__ == '__main__':
-    start_demo()
-    #test_upload_file_data()
+    #start_demo()
+    test_upload_file_data()
 
 
