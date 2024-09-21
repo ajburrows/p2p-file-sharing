@@ -1,5 +1,6 @@
 import socket
 import threading
+import random
 
 
 OPCODE_RECORD_FILE_DATA = '3' # Received by peers when they connect and tell the server what files they want to share
@@ -168,14 +169,29 @@ def handle_peer(conn, addr):
     print(f'server.py: end of handle_peer, peers: {peers}')
 
 
-def send_chunk2(conn, peer_id, chunk_set, chunk_num):
+def send_chunk2(conn, requester_id, chunk_set, chunk_num):
     """
-        Takes the file_name, chunk_number, requester, and peer with the chunk.
-
-        Tells the requester the chunk_number and peer contact so the requester and reach out to the peer to get that chunk
+        inputs:
+                 conn - the socket between the server and the peer requesting a file
+            requester - the id of the peer requesting the file
+            chunk_set - the set of chunks with the ids of peers who have each chunk
+            chunk_num - the chunk within chunk_set that needs to be sent to the requester
+        
+        Description:
+            Randomly picks a peer who has the desired chunk (chunk_num) and sends that peer's contact info as well as the
+            chunk number to the requester.
 
     """
-    return
+
+    # Randomly choose a peer who has the chunk
+    peer_id = random.choice(list(chunk_set[chunk_num]))
+
+    # Get that peer's contact info
+    peer_ip_addr = peers[peer_id][1][0]
+    peer_port_num = peers[peer_id][1][1]
+    message = str(chunk_num) + '#' + str(peer_ip_addr) + '#' + str(peer_port_num)
+    conn.send(message.encode('utf-8'))
+
 
 def send_file(conn, requester_id, file_name):
     """
