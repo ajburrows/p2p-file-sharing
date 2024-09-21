@@ -39,8 +39,7 @@ def start_demo():
     peer2_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files2'
     peer3_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files3'
 
-    files_directory = input("  demo.py: Enter seed file directory:")
-    server_process = start_server(files_directory)
+    server_process = start_server()
     time.sleep(3)
     print()
 
@@ -51,9 +50,6 @@ def start_demo():
     peer3, peer3_thread = create_new_peer(3, HOST, PORT, peer3_files_dir)
     print()
 
-    peer1.initialize_files()
-
-    peer1.upload_file_data()
 
     peer1.req_chunk()
     time.sleep(4)
@@ -106,7 +102,7 @@ def test_upload_file_data():
 
 
 if __name__ == '__main__':
-    #start_demo()
-    test_upload_file_data()
+    start_demo()
+    #test_upload_file_data()
 
 

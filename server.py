@@ -1,11 +1,16 @@
 import socket
 import threading
-import os
-import sys
+
+
+OPCODE_RECORD_FILE_DATA = '3' # Received by peers when they connect and tell the server what files they want to share
 
 requested_data = '<server_data_here>'
 peers = {} # {peer_id:(server_addr, listening_addr)} --> addr stored as (ip_addr, port_number)
 data_holders = {} # {data_hash:(peer_id1, peer_id2, peer_id3, ...)} --> peer IDs stored in set
+file_holders = {} # {file1_name: {chunk_1: (peer_id1, peer_id2, ...), chunk_2: (peer_id1, peer_id2, ...)}, file2_name: {...}, ...}
+                  # ^--> dictionary of file names. Within each file there is another dictionary containing the chunk and a set of
+                  #      which peers have that chunk. The number of chunks in a file can be found by dining the length of the
+                  #      set stored under the file_name
 
 def send_chunk(peer_conn, peer_id, message):
     # Check if any peers on the network have the data already
@@ -36,6 +41,37 @@ def send_chunk(peer_conn, peer_id, message):
                 data_holders[requested_data].add(peer_id)
                 break
 
+
+def get_peer_contact_info(message):
+    cur_substring = ''
+    peer_id = None
+    peer_port = None
+
+    # get peer_id
+    i = 0
+    while i < len(message):
+        if message[i] != '#':
+            cur_substring += message[i]
+        else:
+            i += 1
+            break
+        i += 1
+    peer_id = int(cur_substring)
+    
+    # get peer's listening port number
+    cur_substring = ''
+    while i < len(message):
+        if message[i] != '#':
+            cur_substring += message[i]
+        else:
+            i += 1
+            break
+        i += 1
+
+    peer_port = int(cur_substring)
+    return peer_id, peer_port
+
+
 # Function to handle communication with a single peer
 def handle_peer(conn, addr):
     print(f"server.py: New connection from {addr}")
@@ -54,9 +90,9 @@ def handle_peer(conn, addr):
             break
 
         operation = message[0]
-        peer_id = message[1]
+        peer_id, peer_listening_port = get_peer_contact_info(message[1:])
         if peer_id not in peers:
-            peers[peer_id] = (addr, (addr[0], int(message[2:])))
+            peers[peer_id] = (addr, (addr[0], peer_listening_port))
             print(f'server.py: start handle_peer, peers: {peers}')
     
 

@@ -161,7 +161,7 @@ class Peer:
         
         """
         # tell server what files I have (name of file + number of chunks)
-        message = OPCODE_UPLOAD_FILE_DATA
+        message = self.make_message_header(OPCODE_UPLOAD_FILE_DATA)
         for file_name in self.files:
             file_name_length = str(len(file_name))
             num_chunks = str(len(self.files[file_name]))
@@ -238,7 +238,7 @@ class Peer:
         """
 
         if self.server_socket:
-            message = OPCODE_SEND_SERVER_MESSAGE + message
+            message = self.make_message_header(OPCODE_SEND_SERVER_MESSAGE) + message
             self.server_socket.send(message.encode('utf-8'))
             print(f'  peer.py: Peer{self.peer_id} sent message to server: {message[1:]}')
 
@@ -262,6 +262,17 @@ class Peer:
         if data == '<server_data_here>':
             return True
         return False
+
+    def make_message_header(self, opcode):
+        """
+            Every message sent to the server should have a header containing:
+                1) OPCODE
+                2) Peer's ID
+                3) Peer's listening port number
+
+            This method makes that header using the OPCODE passed in
+        """
+        return opcode + str(self.peer_id) + '#' + str(self.port + self.peer_id) + '#'
 
 
     def req_chunk(self):
@@ -302,7 +313,7 @@ class Peer:
 
             # Prepend 0 to tell the server this peer is requesting data
             # Send the server the port of the listener_socket (self.port + self.peer_id)
-            message = OPCODE_REQ_CHUNK_FROM_SERVER + str(self.peer_id) + str(self.port + self.peer_id) 
+            message = self.make_message_header(OPCODE_REQ_CHUNK_FROM_SERVER)
             self.server_socket.send(message.encode('utf-8'))
 
             # wait for response from the server
@@ -313,7 +324,7 @@ class Peer:
             if server_data[0] == OPCODE_FILE_DATA_RECEIVED:
                 self.file_data += server_data[1:]
                 if self.verify_data(self.file_data):
-                    self.server_socket.send(OPCODE_VALID_DATA_RECEIVED.encode('utf-8'))
+                    self.server_socket.send(self.make_message_header(OPCODE_VALID_DATA_RECEIVED).encode('utf-8'))
             
             # If server_data starts with "1", then this peer must get the data from another peer
             # The ip and port number of that peer's listening_socket is given in the server's message after the 1
@@ -325,7 +336,7 @@ class Peer:
                 try:
                     print(f'  peer.py: Peer{self.peer_id} connected to peer [{peer_ip}:{peer_port}]')
                     peer_socket.connect((peer_ip, int(peer_port)))
-                    peer_socket.send(OPCODE_REQ_CHUNK_FROM_PEER.encode('utf-8'))
+                    peer_socket.send(self.make_message_header(OPCODE_REQ_CHUNK_FROM_PEER).encode('utf-8'))
                     self.file_data += peer_socket.recv(1024).decode('utf-8') # record the data from the peer
                     print(f'  peer.py: Peer{self.peer_id} now has file_data: {self.file_data}')
 
@@ -339,11 +350,11 @@ class Peer:
 
                 # verify the integrity of the data
                 if self.verify_data(self.file_data):
-                    self.server_socket.send(OPCODE_VALID_DATA_RECEIVED.encode('utf-8')) # tell the server the data was recieved
+                    self.server_socket.send(self.make_message_header(OPCODE_VALID_DATA_RECEIVED).encode('utf-8')) # tell the server the data was recieved
                 else:
                     #TODO: if invalid data is received, wait for another response from server (either another ip address or the file_data)
                     print(f'  peer.py: Peer{self.peer_id} received invalid data from peer [{peer_ip}:{peer_port}]')
-                    self.server_socket.send(OPCODE_INVALID_DATA_RECEIVED.encode('utf-8'))
+                    self.server_socket.send(self.make_message_header(OPCODE_INVALID_DATA_RECEIVED).encode('utf-8'))
 
         else:
             raise Exception('  peer.py: Peer is not connected to a server.')
