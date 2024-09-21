@@ -5,7 +5,7 @@ import sys
 
 requested_data = '<server_data_here>'
 peers = {} # {peer_id:(server_addr, listening_addr)} --> addr stored as (ip_addr, port_number)
-data_holders = {} # {data_hash:(peer_id1, peer_id2, peer_id3, ...)}
+data_holders = {} # {data_hash:(peer_id1, peer_id2, peer_id3, ...)} --> peer IDs stored in set
 
 def send_chunk(peer_conn, peer_id, message):
     # Check if any peers on the network have the data already
@@ -80,10 +80,11 @@ def close_server(conn):
 def file_to_chunks(file_path, chunk_size):
     """
         inputs:
-            file_path - root path of the directory containing files for the server to upload.
+             file_path - root path of the directory containing files for the server to upload.
             chunk_size - the files will be split up into chunks of this size in bytes
 
         outputs:
+            chunk_dict - a dictionary that enumerates the files chunks {1:'chunk1_data', 2:'chunk2_data', 3:'chunk3_data', ...}
 
     """
     chunk_dict = {}
@@ -110,7 +111,7 @@ def start_server(files_directory):
         full_path = os.path.join(files_directory, file)
         # Check if the entry is a file
         if os.path.isfile(full_path):
-            files[file] = file_to_chunks(full_path, 1024)
+            files[file] = file_to_chunks(full_path, 8)
     print(f'server.py: files - {files}')
 
     # Create a socket object
