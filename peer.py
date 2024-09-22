@@ -275,55 +275,40 @@ class Peer:
         return opcode + str(self.peer_id) + '#' + str(self.port + self.peer_id) + '#'
 
 
-    def req_chunk2(self):
+    def connect_to_peer(self, peer_ip, peer_port):
+        peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+        try:
+            peer_socket.connect((peer_ip, peer_port))
+        except ConnectionRefusedError:
+            print(f'  peer.py: Peer{self.peer_id} failed to connect to peer [{peer_ip}:{peer_port}]')
+        return peer_socket
+
+
+    def req_chunk2(self, file_name, chunk_num, peer_ip, peer_port):
         # If the server_socket is closed, throw an exception
         if self.server_socket:
-            print(f'  peer.py: Peer{self.peer_id} requesting data')
+            print(f'  peer.py: Peer{self.peer_id} requesting chunk{chunk_num} from [{peer_ip}:{peer_port}]')
 
-            # Prepend 0 to tell the server this peer is requesting data
-            # Send the server the port of the listener_socket (self.port + self.peer_id)
-            message = self.make_message_header(OPCODE_REQ_CHUNK_FROM_SERVER)
-            self.server_socket.send(message.encode('utf-8'))
-
-            # wait for response from the server
-            server_data = self.server_socket.recv(1024).decode('utf-8')
-            print(f'  peer.py: Peer{self.peer_id} received data from server\n           data: {server_data}')
+            # Connect to the peer and download the data from them
+            peer_socket = self.connect_to_peer(peer_ip, peer_port)
             
-            # If the response begins with 0, the following data in the message is the required chunk
-            if server_data[0] == OPCODE_FILE_DATA_RECEIVED:
-                self.file_data += server_data[1:]
-                if self.verify_data(self.file_data):
-                    self.server_socket.send(self.make_message_header(OPCODE_VALID_DATA_RECEIVED).encode('utf-8'))
-            
-            # If server_data starts with "1", then this peer must get the data from another peer
-            # The ip and port number of that peer's listening_socket is given in the server's message after the 1
-            elif server_data[0] == OPCODE_PEER_ADDR_RECEIVED:
-                peer_ip, peer_port = server_data[1:].split(':')[0], server_data[1:].split(':')[1]
-                peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-                # Connect to the peer and download the data from them
-                try:
-                    print(f'  peer.py: Peer{self.peer_id} connected to peer [{peer_ip}:{peer_port}]')
-                    peer_socket.connect((peer_ip, int(peer_port)))
-                    peer_socket.send(self.make_message_header(OPCODE_REQ_CHUNK_FROM_PEER).encode('utf-8'))
-                    self.file_data += peer_socket.recv(1024).decode('utf-8') # record the data from the peer
-                    print(f'  peer.py: Peer{self.peer_id} now has file_data: {self.file_data}')
+            # try to download the chunk from the peer
+            try:
+                # message format: opcode # file_name # chunk_num
+                message = OPCODE_REQ_CHUNK_FROM_PEER + '#' + file_name + '#' + str(chunk_num)
+                message = message.encode('utf-8')
+                message_length = str(len(message)) + '#'
+                peer_socket.send(message.encode('utf-8'))
+                peer_socket.send(message)
+            except:
+                print(f'  peer.py: Peer{self.peer_id} failed to receive chunk from peer [{peer_ip}:{peer_port}]')
+            finally:
+                peer_socket.close()
+                print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
 
 
-                except ConnectionRefusedError:
-                    print(f'  peer.py: Peer{self.peer_id} failed to connect to peer [{peer_ip}:{peer_port}]')
-                finally:
-                    peer_socket.close()
-                    print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
-
-
-                # verify the integrity of the data
-                if self.verify_data(self.file_data):
-                    self.server_socket.send(self.make_message_header(OPCODE_VALID_DATA_RECEIVED).encode('utf-8')) # tell the server the data was recieved
-                else:
-                    #TODO: if invalid data is received, wait for another response from server (either another ip address or the file_data)
-                    print(f'  peer.py: Peer{self.peer_id} received invalid data from peer [{peer_ip}:{peer_port}]')
-                    self.server_socket.send(self.make_message_header(OPCODE_INVALID_DATA_RECEIVED).encode('utf-8'))
+            # TODO: verify the integrity of the data
 
         else:
             raise Exception('  peer.py: Peer is not connected to a server.')
@@ -407,7 +392,7 @@ class Peer:
             handler_threads.append(thread)
             thread.start()
             """
-            req_thread = threading.Thread(target=self.req_chunk2, args=(file_name, chunk_num))
+            req_thread = threading.Thread(target=self.req_chunk2, args=(file_name, chunk_num, peer_ip, peer_port))
             req_thread.start()
             self.req_threads.append(req_thread)
         

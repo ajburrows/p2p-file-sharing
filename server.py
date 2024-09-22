@@ -215,7 +215,7 @@ def send_file(conn, requester_id, file_name):
     # tell the peer how many chunks are in the file
     num_chunks_message = str(len(needed_chunks)).encode('utf-8')
     num_chunks_message_length = str(len(num_chunks_message)) + '#'
-    conn.send(num_chunks_message_length)
+    conn.send(num_chunks_message_length.encode('utf-8'))
     conn.send(num_chunks_message)
 
     for chunk_num in needed_chunks:
