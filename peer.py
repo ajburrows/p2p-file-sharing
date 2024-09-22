@@ -206,7 +206,7 @@ class Peer:
 
         chunk_dict = {}
         i = 0
-        with open(file_path, 'rb') as file:
+        with open(file_path, 'r') as file:
             while i >= 0:
                 chunk = file.read(chunk_size)
                 if not chunk:
@@ -340,11 +340,24 @@ class Peer:
                 downloaded and the contact information of a peer with that chunk. This will continue until every chunk has been
                 downloaded or there are no peers left on the network with the needed chunks.
 
+                req_chunk_message = chunk_num + # + peer_ip_addr + # + peer_port_num
+
         """
 
         # tell the server which file this peer wants
         message = self.make_message_header(OPCODE_DOWNLOAD_FILE_FROM_SERVER) + file_name
         self.server_socket.send(message.encode('utf-8'))
+
+        cur_substring = ''
+        while True:
+            byte = self.server_socket.recv(1).decode('utf-8')
+            if byte == '#':
+                break
+            cur_substring += byte
+        message_length = int(cur_substring)
+
+        req_chunk_message = self.server_socket.recv(message_length).decode('utf-8')
+        print(f'\nTESTING: req_chunk_message - {req_chunk_message}\n')
 
         
 

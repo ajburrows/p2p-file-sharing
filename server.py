@@ -169,7 +169,7 @@ def handle_peer(conn, addr):
     print(f'server.py: end of handle_peer, peers: {peers}')
 
 
-def send_chunk2(conn, requester_id, chunk_set, chunk_num):
+def send_chunk2(conn, chunk_set, chunk_num):
     """
         inputs:
                  conn - the socket between the server and the peer requesting a file
@@ -190,7 +190,10 @@ def send_chunk2(conn, requester_id, chunk_set, chunk_num):
     peer_ip_addr = peers[peer_id][1][0]
     peer_port_num = peers[peer_id][1][1]
     message = str(chunk_num) + '#' + str(peer_ip_addr) + '#' + str(peer_port_num)
-    conn.send(message.encode('utf-8'))
+    message = message.encode('utf-8')
+    message_len = str(len(message)) + '#'
+    conn.send(message_len.encode('utf-8')) # tell the peer how many bytes it needs to read to capture the next message
+    conn.send(message)
 
 
 def send_file(conn, requester_id, file_name):
@@ -213,7 +216,7 @@ def send_file(conn, requester_id, file_name):
         # only queue up 4 concurrent chunk downloads at a time
         if len(queued_chunks) < 4:
             queued_chunks.add(chunk_num)
-            send_chunk2(conn, requester_id, chunk_set, chunk_num)
+            send_chunk2(conn, chunk_set, chunk_num)
         else:
             # download_result format: 'OPCODE' + 'CHUNK_NUM' + '#' + 'PEER_ID'. PEER_ID is the id of the peer that sent the chunk
             download_result = conn.recv(1024).decode('utf-8')
@@ -239,7 +242,7 @@ def send_file(conn, requester_id, file_name):
                 file_holders[file_name][downloaded_chunk].discard(failed_peer_id)
 
                 # try to download the chunk again
-                send_chunk2(conn, requester_id, chunk_set, downloaded_chunk)
+                send_chunk2(conn, chunk_set, downloaded_chunk)
 
             # triggers if the OPCODE was neither 0 or 1
             else:
