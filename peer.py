@@ -34,7 +34,8 @@ class Peer:
                 listener_socket - a socket used for recieving requests from other peers
                      is_running - a flag that is set to False when close_peer() is called to shut down the instance of the peer
                       file_data - this is where the data being downloaded from other peers is stored
-                      files - a dictionary that stores the files as chunks
+                          files - a dictionary that stores the files as chunks
+                    req_threads - a list of the threads that are used to request chunks from other peers
 
         """
 
@@ -47,7 +48,9 @@ class Peer:
         self.is_running = True
         self.file_data = ''
         self.files = {}
+        self.req_threads = []
         print(f'  peer.py: Created new peer id: {peer_id}, host: {host}, port: {port}, file_dir: {files_dir}')
+
 
     def start_listening(self):
         """
@@ -136,10 +139,6 @@ class Peer:
         print(f'  peer.py: Peer{self.peer_id} peer_socket closed')
 
 
-    def get_peer_id(self):
-        return self.peer_id
-
-
     def create_server_socket(self):
         """
             Creates a socket specifically for communicating with the central server
@@ -151,7 +150,6 @@ class Peer:
         print(f'  peer.py: Created socket for Peer{self.peer_id}')
 
 
-    #TODO: implement THIS!!!!:w
     def upload_file_data(self):
         """
             Description:
@@ -264,6 +262,7 @@ class Peer:
             return True
         return False
 
+
     def make_message_header(self, opcode):
         """
             Every message sent to the server should have a header containing:
@@ -343,6 +342,33 @@ class Peer:
                 req_chunk_message = chunk_num + # + peer_ip_addr + # + peer_port_num
 
         """
+        def get_req_chunk_info(message):
+            i = 0
+            cur_substring = ''
+            while i < len(message):
+
+                # get the chunk number
+                while i < len(message):
+                    if message[i] == '#':
+                        i += 1
+                        break
+                    cur_substring += message[i]
+                    i += 1
+                chunk_num = int(cur_substring)
+
+
+                while i < len(message):
+                    if message[i] == '#':
+                        i += 1
+                        break
+                    cur_substring += message[i]
+                    i += 1
+                peer_ip_addr = cur_substring
+
+                peer_port_num = message[i:]
+                
+            return chunk_num, peer_ip_addr, peer_port_num
+
 
         # tell the server which file this peer wants
         message = self.make_message_header(OPCODE_DOWNLOAD_FILE_FROM_SERVER) + file_name
@@ -358,8 +384,18 @@ class Peer:
 
         req_chunk_message = self.server_socket.recv(message_length).decode('utf-8')
         print(f'\nTESTING: req_chunk_message - {req_chunk_message}\n')
+        chunk_num, peer_ip, peer_port = get_req_chunk_info(req_chunk_message)
 
-        
+        # start a new thread to download that chunk
+        """
+        thread = threading.Thread(target=self.handle_peer_request, args=(conn, addr))
+        handler_threads.append(thread)
+        thread.start()
+        """
+        req_thread = threading.Thread(target=self.req_chunk2, args=(file_name, chunk_num))
+        req_thread.start()
+        self.req_threads.append(req_thread)
+
 
 
     def req_chunk(self):
@@ -468,6 +504,6 @@ class Peer:
         self.start_listening()
 
 
-
 def peer_thread_function(peer): 
     peer.run_in_background()
+
