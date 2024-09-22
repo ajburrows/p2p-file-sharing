@@ -328,6 +328,15 @@ class Peer:
         else:
             raise Exception('  peer.py: Peer is not connected to a server.')
 
+    def get_message_length(self):
+        cur_substring = ''
+        while True:
+            byte = self.server_socket.recv(1).decode('utf-8')
+            if byte == '#':
+                break
+            cur_substring += byte
+        return int(cur_substring)
+
 
     def download_file(self, file_name):
         """
@@ -374,27 +383,37 @@ class Peer:
         message = self.make_message_header(OPCODE_DOWNLOAD_FILE_FROM_SERVER) + file_name
         self.server_socket.send(message.encode('utf-8'))
 
-        cur_substring = ''
-        while True:
-            byte = self.server_socket.recv(1).decode('utf-8')
-            if byte == '#':
-                break
-            cur_substring += byte
-        message_length = int(cur_substring)
+        # read how many chunks are in the file and initialize a dictionary to hold the chunks
+        message_length = self.get_message_length()
+        num_chunks = int(self.server_socket.recv(message_length).decode('utf-8'))
+        chunks_dict = {} # a dictionary to track the file data {chunk_1: "1st 8 bytes", chunk_2: "2nd 8 bytes", ...}
+        needed_chunks = set() # a set to track which chunks still need to be downloaded. When it's empty, the download is complete
+        for chunk_num in range(num_chunks):
+            chunks_dict[chunk_num] = ""
+            needed_chunks.add(chunk_num)
 
-        req_chunk_message = self.server_socket.recv(message_length).decode('utf-8')
-        print(f'\nTESTING: req_chunk_message - {req_chunk_message}\n')
-        chunk_num, peer_ip, peer_port = get_req_chunk_info(req_chunk_message)
 
-        # start a new thread to download that chunk
-        """
-        thread = threading.Thread(target=self.handle_peer_request, args=(conn, addr))
-        handler_threads.append(thread)
-        thread.start()
-        """
-        req_thread = threading.Thread(target=self.req_chunk2, args=(file_name, chunk_num))
-        req_thread.start()
-        self.req_threads.append(req_thread)
+        while needed_chunks:
+
+            # read the chunk location info
+            message_length = self.get_message_length()
+            req_chunk_message = self.server_socket.recv(message_length).decode('utf-8')
+            print(f'\nTESTING: req_chunk_message - {req_chunk_message}\n')
+            chunk_num, peer_ip, peer_port = get_req_chunk_info(req_chunk_message)
+
+            # start a new thread to download that chunk
+            """
+            thread = threading.Thread(target=self.handle_peer_request, args=(conn, addr))
+            handler_threads.append(thread)
+            thread.start()
+            """
+            req_thread = threading.Thread(target=self.req_chunk2, args=(file_name, chunk_num))
+            req_thread.start()
+            self.req_threads.append(req_thread)
+        
+        # join all the threads that were used to download a chunk from a peer
+        for thread in self.req_threads:
+            thread.join()
 
 
 
