@@ -5,7 +5,7 @@ import random
 
 OPCODE_RECORD_FILE_DATA = '3' # Received by peers when they connect and tell the server what files they want to share
 OPCODE_FILE_REQUEST_FROM_PEER = '4' # Received when a peer is requesting to download a file
-OPCODE_SUCCESS = '5'
+OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 OPCODE_FAILURE = '6'
 
 requested_data = '<server_data_here>'
@@ -46,6 +46,19 @@ def send_chunk(peer_conn, peer_id, message):
             if success == '2':
                 data_holders[requested_data].add(peer_id)
                 break
+
+
+def get_message_length(peer_socket):
+    cur_substring = ''
+    while True:
+        byte = peer_socket.recv(1).decode('utf-8')
+        if byte == '#':
+            break
+        cur_substring += byte
+    if cur_substring:
+        return int(cur_substring)
+    else:
+        return None
 
 
 def get_peer_contact_info(message):
@@ -224,13 +237,15 @@ def send_file(conn, requester_id, file_name):
             queued_chunks.add(chunk_num)
             send_chunk2(conn, chunk_set, chunk_num)
         else:
-            # download_result format: 'OPCODE' + 'CHUNK_NUM' + '#' + 'PEER_ID'. PEER_ID is the id of the peer that sent the chunk
-            download_result = conn.recv(1024).decode('utf-8')
+            # download_result format: OPCODE + '#' + PEER_ADDR + '#' + CHUNK_NUM --> PEER_ADDR is the ADDR of the peer that sent the chunk
+            peer_message_length = get_message_length(conn)
+            download_result = conn.recv(peer_message_length).decode('utf-8')
 
-            # get downloaded chunk number
-            downloaded_chunk = int(download_result.split('#')[0][1:])
 
-            if download_result[0] == OPCODE_SUCCESS:
+            if download_result[0] == OPCODE_CHUNK_DOWNLOAD_SUCCESS:
+                # get downloaded chunk number
+                downloaded_chunk = int(download_result.split('#')[2])
+
                 # add this peer to the set of peers who have the chunk
                 file_holders[file_name][downloaded_chunk].add(requester_id)
 
