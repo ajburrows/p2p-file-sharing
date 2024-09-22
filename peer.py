@@ -124,6 +124,7 @@ class Peer:
 
                 # if data starts with "2", the peer is requesting file_data
                 if data[0] == '2':
+                    # TODO: rewrite this so it sends the correct chunk plus the message size
                     peer_socket.send(self.file_data.encode('utf-8'))
                     break
 
@@ -301,6 +302,8 @@ class Peer:
                 message_length = str(len(message)) + '#'
                 peer_socket.send(message.encode('utf-8'))
                 peer_socket.send(message)
+
+                #TODO: receive the chunk from the peer
             except:
                 print(f'  peer.py: Peer{self.peer_id} failed to receive chunk from peer [{peer_ip}:{peer_port}]')
             finally:
