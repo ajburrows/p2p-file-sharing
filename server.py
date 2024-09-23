@@ -19,35 +19,6 @@ file_holders = {} # {file1_name: {chunk_1: (peer_id1, peer_id2, ...), chunk_2: (
                   #      set stored under the file_name
                   #      file_name is a string, the chunk number is an int, and the peer IDs are ints
 
-def send_chunk(peer_conn, peer_id, message):
-    # Check if any peers on the network have the data already
-    peer_addrs = peers[peer_id]
-    if requested_data not in data_holders:
-        data_holders[requested_data] = set()
-        message = "0" + requested_data # prepend 0 so the peer knows it received the data
-        peer_conn.send(message.encode('utf-8'))
-
-        # wait for confirmation from peer that it sucessfuly recieved the data
-        success = peer_conn.recv(1024).decode('utf-8')
-        if success == "1":
-            data_holders[requested_data].add(peer_id)
-            print(f'server.py: send_chunk to peer{peer_id} succeeded\n           message: {message}')
-        else:
-            Exception(f'server.py: send_chunk failed\n           peer_addr: {peer_addrs[0]}\n           message: {message}')
-
-    else:
-        # loop through the peers who have the desired data until one successfuly sends the data to the peer_addr
-        print(f"server.py: data_holders = {data_holders}")
-        for cur_peer_id in data_holders[requested_data]:
-            print(f'server.py: cur_peer_id: {cur_peer_id}')
-            print(f'server.py: peers = {str(peers)}')
-            message = "1" + str(peers[cur_peer_id][1][0]) + ":" + str(peers[cur_peer_id][1][1]) # prepend 1 so the peer knows it received the address of a peer with the data
-            peer_conn.send(message.encode('utf-8'))
-            success = peer_conn.recv(1024).decode('utf-8')
-            if success == '2':
-                data_holders[requested_data].add(peer_id)
-                break
-
 
 def get_message_length(peer_socket):
     cur_substring = ''
@@ -141,18 +112,26 @@ def handle_peer(conn, addr):
     print(f"server.py: New connection from {addr}")
     peer_id = None
     while True:
-        message = conn.recv(1024).decode('utf-8')
+        message_length = get_message_length(conn)
 
         # Close the server if the message is NULL (empty)
-        if not message:
+        if not message_length:
+            print('\nBLUEBERRY\n')
             if peer_id in peers:
                 print(f"server.py: Peer{peer_id} disconnected.")
                 del peers[peer_id]
-                data_holders[requested_data].discard(peer_id)
+                for file_name in file_holders:
+                    for chunk_num in file_holders[file_name]:
+                        if peer_id in file_holders[file_name][chunk_num]:
+                            file_holders[file_name][chunk_num].remove(peer_id)
+                print(f'server.py: Peer{peer_id} removed from file_holders: {file_holders}')
             else:
                 print(f"Null message recieved from unknown peer")
             break
 
+        message = conn.recv(message_length).decode('utf-8')
+
+        print(f"server.py: hand_peer received message: {message}")
         operation = message[0]
         peer_id, peer_listening_port, message = get_peer_contact_info(message[1:])
         #print(f'\nserver.py: TESTING MESSAGE\n           peerID: {peer_id}\n           portNum: {peer_listening_port}\n           message: {message}\n')
@@ -161,22 +140,15 @@ def handle_peer(conn, addr):
             print(f'server.py: start handle_peer, peers: {peers}')
     
 
-        # Send data to the peer
-        if operation == '0':
-            print(f'server.py: Data request received from Peer{peer_id}\n           Peer addrs: {peers[peer_id]}')
-            send_chunk(conn, peer_id, message)
-            data_holders[requested_data].add(peer_id)
-
-        elif operation == '1':
-            print(f'server.py: Message received from Peer{peers[addr]}\n           Peer addr: {addr}\n           Message: {message[1:]}\n')
 
         # Peer is telling the server what files it is willing to share
-        elif operation == OPCODE_RECORD_FILE_DATA:
+        if operation == OPCODE_RECORD_FILE_DATA:
             record_file_data(message, peer_id)
         
         # Peer is telling the server what file it wants to download
         elif operation == OPCODE_FILE_REQUEST_FROM_PEER:
             send_file(conn, peer_id, message)
+            time.sleep(10) # TODO: Ensure that the file has completed downloading before moving on from this operation and repeating the while loop in handle_peer
 
 
     conn.close()
@@ -277,6 +249,7 @@ def send_file(conn, requester_id, file_name):
             # triggers if the OPCODE was neither 0 or 1
             else:
                 Exception('server.py: EXCEPTION invalid opcode from peer in send_file')
+
 
 
 
