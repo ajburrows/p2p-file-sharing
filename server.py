@@ -1,6 +1,7 @@
 import socket
 import threading
 import random
+import time
 
 
 OPCODE_RECORD_FILE_DATA = '3' # Received by peers when they connect and tell the server what files they want to share
@@ -207,6 +208,7 @@ def send_chunk2(conn, chunk_set, chunk_num):
     message_len = str(len(message)) + '#'
     conn.send(message_len.encode('utf-8')) # tell the peer how many bytes it needs to read to capture the next message
     conn.send(message)
+    print(f'server.py: Server sending chunk-info to peer\n           message: {message}, length: {message_len}\n')
 
 
 def send_file(conn, requester_id, file_name):
@@ -230,16 +232,23 @@ def send_file(conn, requester_id, file_name):
     num_chunks_message_length = str(len(num_chunks_message)) + '#'
     conn.send(num_chunks_message_length.encode('utf-8'))
     conn.send(num_chunks_message)
+    print(f'server.py: Server sending num_chunks to Peer{requester_id}: {num_chunks_message}, len: {num_chunks_message_length}')
 
-    for chunk_num in needed_chunks:
+    #for chunk_num in range(len(needed_chunks)):
+    chunk_num = 0
+    while chunk_num < len(chunk_set):
+
         # only queue up 4 concurrent chunk downloads at a time
-        if len(queued_chunks) < 4:
+        if len(queued_chunks) < 2:
             queued_chunks.add(chunk_num)
             send_chunk2(conn, chunk_set, chunk_num)
+            chunk_num += 1
+            time.sleep(0.1)
         else:
             # download_result format: OPCODE + '#' + PEER_ADDR + '#' + CHUNK_NUM --> PEER_ADDR is the ADDR of the peer that sent the chunk
             peer_message_length = get_message_length(conn)
             download_result = conn.recv(peer_message_length).decode('utf-8')
+            print(f'server.py: Server received message while waiting for chunks to download\n          message: {download_result}')
 
 
             if download_result[0] == OPCODE_CHUNK_DOWNLOAD_SUCCESS:
@@ -250,7 +259,7 @@ def send_file(conn, requester_id, file_name):
                 file_holders[file_name][downloaded_chunk].add(requester_id)
 
                 # update the remaining chunks of the file that need to be downloaded
-                needed_chunks.remove(downloaded_chunk)
+                #needed_chunks.remove(downloaded_chunk)
 
                 # remove the chunk from the download queue
                 queued_chunks.remove(downloaded_chunk)
