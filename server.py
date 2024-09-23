@@ -8,6 +8,7 @@ OPCODE_RECORD_FILE_DATA = '3' # Received by peers when they connect and tell the
 OPCODE_FILE_REQUEST_FROM_PEER = '4' # Received when a peer is requesting to download a file
 OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 OPCODE_FAILURE = '6'
+OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
 
 requested_data = '<server_data_here>'
 peers = {} # {peer_id:(server_addr, listening_addr)} --> addr stored as (ip_addr, port_number)
@@ -113,9 +114,13 @@ def handle_peer(conn, addr):
     peer_id = None
     while True:
         message_length = get_message_length(conn)
+        message = conn.recv(message_length).decode('utf-8')
+        operation = message[0]
+
+        print(f"server.py: hand_peer received message: {message}")
 
         # Close the server if the message is NULL (empty)
-        if not message_length:
+        if operation == OPCODE_CLOSING_CONNECTION_TO_SERVER:
             print('\nBLUEBERRY\n')
             if peer_id in peers:
                 print(f"server.py: Peer{peer_id} disconnected.")
@@ -129,10 +134,7 @@ def handle_peer(conn, addr):
                 print(f"Null message recieved from unknown peer")
             break
 
-        message = conn.recv(message_length).decode('utf-8')
 
-        print(f"server.py: hand_peer received message: {message}")
-        operation = message[0]
         peer_id, peer_listening_port, message = get_peer_contact_info(message[1:])
         #print(f'\nserver.py: TESTING MESSAGE\n           peerID: {peer_id}\n           portNum: {peer_listening_port}\n           message: {message}\n')
         if peer_id not in peers:

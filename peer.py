@@ -18,6 +18,8 @@ OPCODE_DOWNLOAD_FILE_FROM_SERVER = '4'
 OPCODE_SEND_CHUNK_TO_PEER = '5'
 OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 
+OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
+
 class Peer:
     def __init__(self, peer_id, host, port, files_dir):
         """
@@ -451,6 +453,10 @@ class Peer:
 
         """
         if self.server_socket:
+            message = OPCODE_CLOSING_CONNECTION_TO_SERVER
+            message_length = '1#'
+            self.server_socket.send(message_length.encode('utf-8'))
+            self.server_socket.send(message.encode('utf-8'))
             self.server_socket.close()
         if self.listener_socket:
             self.listener_socket.close()
