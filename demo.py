@@ -85,30 +85,39 @@ def test_upload_file_data():
 
     peer1, peer1_thread = create_new_peer(1, HOST, PORT, peer1_files_dir)
     print()
-    peer2, peer2_thread = create_new_peer(2, HOST, PORT, '')
+    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir)
     print()
+    peer3, peer3_thread = create_new_peer(3, HOST, PORT, '')
+    print('\n  demo.py: created peers')
 
     peer1.initialize_files()
     time.sleep(1)
     print()
-
     peer1.upload_file_data()
+    time.sleep(1)
+
+    peer2.initialize_files()
+    time.sleep(1)
+    print()
+    peer2.upload_file_data()
     time.sleep(1)
     print('\n  demo.py: data uploaded')
 
-    print('\n  demo.py: PEER2 ATTEMPTING DOWNLOAD')
-    peer2.download_file('f1_dir1.txt')
+    print('\n  demo.py: PEER3 ATTEMPTING DOWNLOAD')
+    peer3.download_file('f1_dir1.txt')
     time.sleep(2)
     print()
 
     peer1.close_peer()
     peer2.close_peer()
+    peer3.close_peer()
     time.sleep(2)
     print()
     print("  demo.py: peers have closed.")
     stop_server(server_process)
     peer1_thread.join()
     peer2_thread.join()
+    peer3_thread.join()
     print("  demo.py: All peer threads have terminated.")
 
 

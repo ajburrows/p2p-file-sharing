@@ -4,6 +4,8 @@ import random
 import time
 
 
+DOWNLOAD_QUEUE_LEN = 3
+
 OPCODE_RECORD_FILE_DATA = '3' # Received by peers when they connect and tell the server what files they want to share
 OPCODE_FILE_REQUEST_FROM_PEER = '4' # Received when a peer is requesting to download a file
 OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
@@ -105,7 +107,7 @@ def record_file_data(message, peer_id):
                 chunk_set[j] = set()
                 chunk_set[j].add(peer_id)
     
-    print(f'server.py: File data recorded from Peer{peer_id}\n           file_holders: {file_holders}')
+    #print(f'server.py: File data recorded from Peer{peer_id}\n           file_holders: {file_holders}')
 
 
 def handle_peer(conn, addr):
@@ -117,11 +119,11 @@ def handle_peer(conn, addr):
         message = conn.recv(message_length).decode('utf-8')
         operation = message[0]
 
-        print(f"server.py: hand_peer received message: {message}")
+        #print(f"server.py: hand_peer received message: {message}")
 
         # Close the server if the message is NULL (empty)
         if operation == OPCODE_CLOSING_CONNECTION_TO_SERVER:
-            print('\nBLUEBERRY\n')
+            #print('\nBLUEBERRY\n')
             if peer_id in peers:
                 print(f"server.py: Peer{peer_id} disconnected.")
                 del peers[peer_id]
@@ -139,7 +141,7 @@ def handle_peer(conn, addr):
         #print(f'\nserver.py: TESTING MESSAGE\n           peerID: {peer_id}\n           portNum: {peer_listening_port}\n           message: {message}\n')
         if peer_id not in peers:
             peers[peer_id] = (addr, (addr[0], peer_listening_port))
-            print(f'server.py: start handle_peer, peers: {peers}')
+            #print(f'server.py: start handle_peer, peers: {peers}')
     
 
 
@@ -150,11 +152,11 @@ def handle_peer(conn, addr):
         # Peer is telling the server what file it wants to download
         elif operation == OPCODE_FILE_REQUEST_FROM_PEER:
             send_file(conn, peer_id, message)
-            time.sleep(10) # TODO: Ensure that the file has completed downloading before moving on from this operation and repeating the while loop in handle_peer
+            #time.sleep(10) # TODO: Ensure that the file has completed downloading before moving on from this operation and repeating the while loop in handle_peer
 
 
     conn.close()
-    print(f'server.py: end of handle_peer, peers: {peers}')
+    #print(f'server.py: end of handle_peer, peers: {peers}')
 
 
 def send_chunk2(conn, chunk_set, chunk_num):
@@ -182,7 +184,7 @@ def send_chunk2(conn, chunk_set, chunk_num):
     message_len = str(len(message)) + '#'
     conn.send(message_len.encode('utf-8')) # tell the peer how many bytes it needs to read to capture the next message
     conn.send(message)
-    print(f'server.py: Server sending chunk-info to peer\n           message: {message}, length: {message_len}\n')
+    #print(f'server.py: Server sending chunk-info to peer\n           message: {message}, length: {message_len}\n')
 
 
 def send_file(conn, requester_id, file_name):
@@ -206,14 +208,14 @@ def send_file(conn, requester_id, file_name):
     num_chunks_message_length = str(len(num_chunks_message)) + '#'
     conn.send(num_chunks_message_length.encode('utf-8'))
     conn.send(num_chunks_message)
-    print(f'server.py: Server sending num_chunks to Peer{requester_id}: {num_chunks_message}, len: {num_chunks_message_length}')
+    #print(f'server.py: Server sending num_chunks to Peer{requester_id}: {num_chunks_message}, len: {num_chunks_message_length}')
 
     #for chunk_num in range(len(needed_chunks)):
     chunk_num = 0
     while chunk_num < len(chunk_set) or len(needed_chunks) > 0:
 
         # only queue up 4 concurrent chunk downloads at a time
-        if len(queued_chunks) < 2 and chunk_num < len(chunk_set.keys()):
+        if len(queued_chunks) < DOWNLOAD_QUEUE_LEN and chunk_num < len(chunk_set.keys()):
             queued_chunks.add(chunk_num)
             send_chunk2(conn, chunk_set, chunk_num)
             chunk_num += 1
@@ -222,7 +224,7 @@ def send_file(conn, requester_id, file_name):
             # download_result format: OPCODE + '#' + PEER_ADDR + '#' + CHUNK_NUM --> PEER_ADDR is the ADDR of the peer that sent the chunk
             peer_message_length = get_message_length(conn)
             download_result = conn.recv(peer_message_length).decode('utf-8')
-            print(f'server.py: Server received message while waiting for chunks to download\n          message: {download_result}')
+            #print(f'server.py: Server received message while waiting for chunks to download\n          message: {download_result}')
 
 
             if download_result[0] == OPCODE_CHUNK_DOWNLOAD_SUCCESS:
@@ -253,7 +255,7 @@ def send_file(conn, requester_id, file_name):
             # triggers if the OPCODE was neither 0 or 1
             else:
                 Exception('server.py: EXCEPTION invalid opcode from peer in send_file')
-    print("\n EXITING SEND FILE\n")
+    #print("\n EXITING SEND FILE\n")
 
 
 

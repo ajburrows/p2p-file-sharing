@@ -4,6 +4,7 @@ import time
 import os
 
 CHUNK_SIZE = 8
+DOWNLOAD_QUEUE_LEN = 3
 
 OPCODE_REQ_CHUNK_FROM_SERVER = '0'
 OPCODE_INVALID_DATA_RECEIVED = '0'
@@ -54,7 +55,7 @@ class Peer:
         self.files = {} # format: {file_name_1: {chunk_1: 'str1', chunk2: 'str2', ...}, file_name_2: {}, ...}
         self.req_threads = []
         self.needed_file_chunks = {}
-        print(f'  peer.py: Created new peer id: {peer_id}, host: {host}, port: {port}, file_dir: {files_dir}')
+        #print(f'  peer.py: Created new peer id: {peer_id}, host: {host}, port: {port}, file_dir: {files_dir}')
 
 
     def start_listening(self):
@@ -71,7 +72,7 @@ class Peer:
         self.listener_socket.bind((self.host, self.port + self.peer_id))
         self.listener_socket.listen(5)
         self.listener_socket.settimeout(3.0)
-        print(f'  peer.py: Peer{self.peer_id} listening on port {self.port + self.peer_id}')
+        #print(f'  peer.py: Peer{self.peer_id} listening on port {self.port + self.peer_id}')
 
         handler_threads = [] # stores threads created to handle other peers
         
@@ -88,7 +89,7 @@ class Peer:
                 continue
 
             except OSError as e:
-                print(f'  peer.py: accept() failed with OSError: {e}')
+                #print(f'  peer.py: accept() failed with OSError: {e}')
                 break
         
         # Join all active threads with other peers
@@ -115,21 +116,21 @@ class Peer:
 
         """
 
-        print(f'  peer.py: Peer{self.peer_id} received connection from {addr}')
+        #print(f'  peer.py: Peer{self.peer_id} received connection from {addr}')
         peer_socket.settimeout(4.0)
 
         while True:
             # recieve message from the peer and perfrom the requested operation
             try: 
                 message_length = self.get_message_length(peer_socket)
-                print(f' peer.py: Peer{self.peer_id} received message of length: ({message_length})')
+                #print(f' peer.py: Peer{self.peer_id} received message of length: ({message_length})')
                 
                 # close the connection on NULL message
                 if not message_length:
                     break
 
                 peer_message = peer_socket.recv(message_length).decode('utf-8')
-                print(f'  peer.py: Peer{self.peer_id} Received message from {addr}\n           message: {peer_message}\n           msg_length: {message_length}')
+                #print(f'  peer.py: Peer{self.peer_id} Received message from {addr}\n           message: {peer_message}\n           msg_length: {message_length}')
 
                 # if data starts with "2", the peer is requesting file_data
                 if peer_message[0] == OPCODE_REQ_CHUNK_FROM_PEER:
@@ -143,12 +144,12 @@ class Peer:
             except socket.timeout:
                 continue
             except (OSError, ConnectionResetError) as e:
-                print(f'  peer.py: Exception in handle_peer_request: {e}')
+                #print(f'  peer.py: Exception in handle_peer_request: {e}')
                 break
 
         # close the connection to the peer
         peer_socket.close()
-        print(f'  peer.py: Peer{self.peer_id} peer_socket closed')
+        #print(f'  peer.py: Peer{self.peer_id} peer_socket closed')
 
 
     def send_chunk_to_peer(self, peer_socket, file_name, chunk_num):
@@ -193,7 +194,7 @@ class Peer:
             # pound signs are a delimiter to tell the server when the file_name_length and num_chunks end
             message += file_name_length + '#' + file_name + num_chunks + '#' 
         
-        print(f'  peer.py: Peer{self.peer_id} uploading file data to server\n           message: {message}')
+        #print(f'  peer.py: Peer{self.peer_id} uploading file data to server\n           message: {message}')
         message = message.encode('utf-8')
         message_length = str(len(message)) + '#'
         self.server_socket.send(message_length.encode('utf-8'))
@@ -250,7 +251,7 @@ class Peer:
         """
 
         self.server_socket.connect((self.host, self.port))
-        print(f"  peer.py: Peer {self.peer_id} connected to server at {self.host}:{self.port}")
+        #print(f"  peer.py: Peer {self.peer_id} connected to server at {self.host}:{self.port}")
 
 
     def verify_data(self, data):
@@ -299,12 +300,12 @@ class Peer:
 
         #server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.server_socket:
-            #print(f'  peer.py: Peer{self.peer_id} requesting chunk ({chunk_num}) from [{peer_ip}:{peer_port}]')
+            print(f'  peer.py: Peer{self.peer_id} requesting chunk ({chunk_num}) from [{peer_ip}:{peer_port}]')
 
             # Connect to the peer and download the data from them
             peer_socket = self.connect_to_peer(peer_ip, peer_port)
             time.sleep(1)
-            print(f'  peer.py: Peer{self.peer_id} connected to peer [{peer_ip}:{peer_port}] to request chunk {chunk_num}')
+            #print(f'  peer.py: Peer{self.peer_id} connected to peer [{peer_ip}:{peer_port}] to request chunk {chunk_num}')
             
 
             # try to download the chunk from the peer
@@ -326,7 +327,7 @@ class Peer:
                     print(f'  peer.py: ERROR Peer{self.peer_id} requested chunk from peer[{peer_ip}:{peer_port}], but received wrong opcode: {peer_response[0]}')
                 else:
                     chunk = peer_response.split('#')[1]
-                    print(f'  peer.py: Peer{self.peer_id} received chunk\n           chunk_num: {chunk_num}\n           chunk_data: {chunk}') 
+                    #print(f'  peer.py: Peer{self.peer_id} received chunk\n           chunk_num: {chunk_num}\n           chunk_data: {chunk}') 
 
                     # store the chunk
                     self.files[file_name][chunk_num] = chunk # store the chunk data
@@ -338,15 +339,16 @@ class Peer:
                     server_message_length = str(len(server_message)) + '#'
                     self.server_socket.send(server_message_length.encode('utf-8'))
                     self.server_socket.send(server_message)
-                    print(f'  peer.py: Peer{self.peer_id} telling server chunk ({chunk_num}) was downloaded.')
-                    print(f'  peer.py: Peer{self.peer_id} self.files: {self.files}')
+                    #print(f'  peer.py: Peer{self.peer_id} telling server chunk ({chunk_num}) was downloaded.')
+                    #print(f'  peer.py: Peer{self.peer_id} self.files: {self.files}')
+                    print(f'  peer.py: Peer{self.peer_id} received chunk ({chunk_num})\n')#n          Peer{self.peer_id}.files: {self.files}\n')
 
                 
             except:
                 print(f'  peer.py: Peer{self.peer_id} failed to receive chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]')
             finally:
                 peer_socket.close()
-                print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
+                #print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
 
 
             # TODO: verify the integrity of the data
@@ -400,12 +402,12 @@ class Peer:
         message_length = str(len(message)) + '#'
         self.server_socket.send(message_length.encode('utf-8'))
         self.server_socket.send(message)
-        print(f'  peer.py: Peer{self.peer_id} asked server for file.\n           message: {message}')
+        #print(f'  peer.py: Peer{self.peer_id} asked server for file.\n           message: {message}')
 
         # Read how many chunks are in the file 
         message_length = self.get_message_length(self.server_socket)
         num_chunks = int(self.server_socket.recv(message_length).decode('utf-8'))
-        print(f'  peer.py: Peer received num_chunks from server: {num_chunks} for file {file_name}')
+        #print(f'  peer.py: Peer received num_chunks from server: {num_chunks} for file {file_name}')
 
         #Create space to store the file data
         chunks_dict = {} # a dictionary to track the file data {chunk_1: "1st 8 bytes", chunk_2: "2nd 8 bytes", ...}
@@ -417,12 +419,12 @@ class Peer:
         self.needed_file_chunks[file_name] = needed_chunks
 
 
-        while len(self.needed_file_chunks[file_name]) > 1:
+        while len(self.needed_file_chunks[file_name]) > DOWNLOAD_QUEUE_LEN:
             # read the chunk location info
             message_length = self.get_message_length(self.server_socket)
             req_chunk_message = self.server_socket.recv(message_length).decode('utf-8')
-            print(f'  peer.py: Peer{self.peer_id} received req_chunk_message from server.\n           message: {req_chunk_message}\n           msg_length: {message_length}\n')
-            time.sleep(0.1)
+            #print(f'  peer.py: Peer{self.peer_id} received req_chunk_message from server.\n           message: {req_chunk_message}\n           msg_length: {message_length}\n')
+            #time.sleep(0.1)
             chunk_num, peer_ip, peer_port = get_req_chunk_info(req_chunk_message)
 
             # start a new thread to download that chunk
@@ -436,10 +438,10 @@ class Peer:
             self.req_threads.append(req_thread)
         
         # join all the threads that were used to download a chunk from a peer
-        print(f'\n  peer.py: JOINING THREADS\n')
+        #print(f'\n  peer.py: JOINING THREADS\n')
         for thread in self.req_threads:
             thread.join()
-        print(f'\n  peer.py: THREADS JOINED\n')
+        #print(f'\n  peer.py: THREADS JOINED\n')
 
 
 
@@ -462,7 +464,7 @@ class Peer:
             self.listener_socket.close()
 
         self.is_running = False
-        print(f"  peer.py: Peer{self.peer_id} sockets closed.")
+        #print(f"  peer.py: Peer{self.peer_id} sockets closed.")
 
 
     def run_in_background(self):
