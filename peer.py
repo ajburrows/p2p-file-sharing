@@ -172,7 +172,7 @@ class Peer:
         """
 
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        time.sleep(2)
+        #time.sleep(2)
         #print(f'  peer.py: Created socket for Peer{self.peer_id}')
 
 
@@ -304,7 +304,7 @@ class Peer:
 
             # Connect to the peer and download the data from them
             peer_socket = self.connect_to_peer(peer_ip, peer_port)
-            time.sleep(1)
+            time.sleep(0.5)
             #print(f'  peer.py: Peer{self.peer_id} connected to peer [{peer_ip}:{peer_port}] to request chunk {chunk_num}')
             
 
@@ -373,6 +373,7 @@ class Peer:
 
 
     def download_file(self, file_name):
+        #TODO: 
         """
             Inputs:
                 file_name - this is the name of the file that the peer wants to download

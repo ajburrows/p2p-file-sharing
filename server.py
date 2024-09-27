@@ -219,7 +219,7 @@ def send_file(conn, requester_id, file_name):
             queued_chunks.add(chunk_num)
             send_chunk2(conn, chunk_set, chunk_num)
             chunk_num += 1
-            time.sleep(0.1)
+            time.sleep(0.05) # give time for peer response to finish sending here
         else:
             # download_result format: OPCODE + '#' + PEER_ADDR + '#' + CHUNK_NUM --> PEER_ADDR is the ADDR of the peer that sent the chunk
             peer_message_length = get_message_length(conn)
