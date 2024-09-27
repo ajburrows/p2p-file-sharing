@@ -210,10 +210,10 @@ def send_file(conn, requester_id, file_name):
 
     #for chunk_num in range(len(needed_chunks)):
     chunk_num = 0
-    while chunk_num < len(chunk_set):
+    while chunk_num < len(chunk_set) or len(needed_chunks) > 0:
 
         # only queue up 4 concurrent chunk downloads at a time
-        if len(queued_chunks) < 2:
+        if len(queued_chunks) < 2 and chunk_num < len(chunk_set.keys()):
             queued_chunks.add(chunk_num)
             send_chunk2(conn, chunk_set, chunk_num)
             chunk_num += 1
@@ -237,9 +237,11 @@ def send_file(conn, requester_id, file_name):
 
                 # remove the chunk from the download queue
                 queued_chunks.remove(downloaded_chunk)
+                needed_chunks.remove(downloaded_chunk)
 
 
             elif download_result[0] == OPCODE_FAILURE:
+                print(f'server.py: peer FAILED to donwload chunk')
                 # the data was corrupted so remove the peer from the server's lists
                 failed_peer_id = int(download_result.split('#')[1])
                 del peers[failed_peer_id]
@@ -251,6 +253,7 @@ def send_file(conn, requester_id, file_name):
             # triggers if the OPCODE was neither 0 or 1
             else:
                 Exception('server.py: EXCEPTION invalid opcode from peer in send_file')
+    print("\n EXITING SEND FILE\n")
 
 
 
