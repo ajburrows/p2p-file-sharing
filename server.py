@@ -110,8 +110,13 @@ def record_file_data(message, peer_id):
             for j in range(num_chunks):
                 chunk_set[j] = set()
                 chunk_set[j].add(peer_id)
+        if cur_file_name not in chunk_hashes:
+            chunk_hashes[cur_file_name] = {}
+            for j in range(num_chunks):
+                chunk_hashes[cur_file_name][j] = ''
     
     #print(f'server.py: File data recorded from Peer{peer_id}\n           file_holders: {file_holders}')
+    
 
 
 def handle_peer(conn, addr):
@@ -153,7 +158,7 @@ def handle_peer(conn, addr):
             record_file_data(message, peer_id)
 
         elif operation == OPCODE_SEND_CHUNK_HASH_TO_SERVER:
-            record_chunk_hash()
+            record_chunk_hash(message)
         
         # Peer is telling the server what file it wants to download
         elif operation == OPCODE_FILE_REQUEST_FROM_PEER:
@@ -164,8 +169,15 @@ def handle_peer(conn, addr):
     #print(f'server.py: end of handle_peer, peers: {peers}')
 
 
-def record_chunk_hash():
+def record_chunk_hash(message):
+    message_parts = message.split('#')
+    file_name = message_parts[0]
+    chunk_num = int(message_parts[1])
+    chunk_hash = message_parts[2]
 
+    if not chunk_hashes[file_name][chunk_num]:
+        chunk_hashes[file_name][chunk_num] = chunk_hash
+    #print(f'server.py: chunk_hashes: {chunk_hashes}')
 
 
 def send_chunk2(conn, chunk_set, chunk_num):

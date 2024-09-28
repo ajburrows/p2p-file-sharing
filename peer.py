@@ -209,7 +209,7 @@ class Peer:
         message += msg_content
         message = message.encode('utf-8')
         message_length = str(len(message)) + "#"
-        self.server_socket.send(message_length)
+        self.server_socket.send(message_length.encode('utf-8'))
         self.server_socket.send(message)
 
 
@@ -226,9 +226,11 @@ class Peer:
                 # Get the hash of the current chunk
                 chunk = chunk_set[chunk_num]
                 chunk_hex_dig = self.hash_chunk(chunk)
+                message = file_name + "#" + str(chunk_num) + "#" + chunk_hex_dig
 
                 # Send the hash to the server
-                self.send_server_message(OPCODE_SEND_CHUNK_HASH_TO_SERVER, chunk_hex_dig)
+                #print(f'sending chunk_hash {message}')
+                self.send_server_message(OPCODE_SEND_CHUNK_HASH_TO_SERVER, message)
 
 
     def hash_chunk(self, chunk):

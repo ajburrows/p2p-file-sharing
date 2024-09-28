@@ -93,17 +93,18 @@ def test_upload_file_data():
     print('\n  demo.py: created peers')
 
     peer1.initialize_files()
-    #time.sleep(1)
+    time.sleep(2)
     #print()
     peer1.upload_file_data()
-    #time.sleep(1)
-    peer1.upload_chunk_hashes()
+    time.sleep(2)
+    #peer1.upload_chunk_hashes()
+    time.sleep(1)
 
     peer2.initialize_files()
-    #time.sleep(1)
+    time.sleep(1)
     print()
     peer2.upload_file_data()
-    #time.sleep(1)
+    time.sleep(1)
     print('\n  demo.py: data uploaded')
 
     print('\n  demo.py: PEER3 ATTEMPTING DOWNLOAD')
