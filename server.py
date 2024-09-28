@@ -177,7 +177,6 @@ def record_chunk_hash(message):
 
     if not chunk_hashes[file_name][chunk_num]:
         chunk_hashes[file_name][chunk_num] = chunk_hash
-    #print(f'server.py: chunk_hashes: {chunk_hashes}')
 
 
 def send_chunk2(conn, chunk_set, chunk_num):
