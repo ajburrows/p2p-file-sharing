@@ -1,4 +1,5 @@
 import threading
+import hashlib
 import socket
 import time
 import os
@@ -20,6 +21,8 @@ OPCODE_SEND_CHUNK_TO_PEER = '5'
 OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 
 OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
+
+OPCODE_SEND_CHUNK_HASH_TO_SERVER = '8'
 
 class Peer:
     def __init__(self, peer_id, host, port, files_dir):
@@ -201,6 +204,42 @@ class Peer:
         self.server_socket.send(message)
 
 
+    def send_server_message(self, opcode, msg_content):
+        message = self.make_message_header(opcode)
+        message += msg_content
+        message = message.encode('utf-8')
+        message_length = str(len(message)) + "#"
+        self.server_socket.send(message_length)
+        self.server_socket.send(message)
+
+
+    def upload_chunk_hashes(self):
+        """
+            Loop through every chunk for every file that this peer wants to share with the network. Calculate the hash for each chunk
+            and send that to the server.
+
+        """
+        #print(f"self.files: {self.files}")
+        for file_name in self.files:
+            chunk_set = self.files[file_name]
+            for chunk_num in chunk_set:
+                # Get the hash of the current chunk
+                chunk = chunk_set[chunk_num]
+                chunk_hex_dig = self.hash_chunk(chunk)
+
+                # Send the hash to the server
+                self.send_server_message(OPCODE_SEND_CHUNK_HASH_TO_SERVER, chunk_hex_dig)
+
+
+    def hash_chunk(self, chunk):
+        encoded_chunk = chunk.encode('utf-8')
+        chunk_hash_obj = hashlib.sha256()
+        chunk_hash_obj.update(encoded_chunk)
+        chunk_hex_dig = chunk_hash_obj.hexdigest()
+
+        return chunk_hex_dig
+
+
     def initialize_files(self):
         """
             Description:
@@ -294,10 +333,6 @@ class Peer:
 
     def req_chunk2(self, file_name, chunk_num, peer_ip, peer_port):
 
-        # TODO: can't use the server socket for this because the peer sends back chunk data. That is then read
-        # by the get_req_chunk_info() in download_file() and the program breaks
-        # If the server_socket is closed, throw an exception
-
         #server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.server_socket:
             print(f'  peer.py: Peer{self.peer_id} requesting chunk ({chunk_num}) from [{peer_ip}:{peer_port}]')
@@ -373,7 +408,7 @@ class Peer:
 
 
     def download_file(self, file_name):
-        #TODO: 
+
         """
             Inputs:
                 file_name - this is the name of the file that the peer wants to download
@@ -443,8 +478,6 @@ class Peer:
         for thread in self.req_threads:
             thread.join()
         #print(f'\n  peer.py: THREADS JOINED\n')
-
-
 
 
     def close_peer(self):

@@ -97,6 +97,7 @@ def test_upload_file_data():
     #print()
     peer1.upload_file_data()
     #time.sleep(1)
+    peer1.upload_chunk_hashes()
 
     peer2.initialize_files()
     #time.sleep(1)

@@ -11,6 +11,7 @@ OPCODE_FILE_REQUEST_FROM_PEER = '4' # Received when a peer is requesting to down
 OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 OPCODE_FAILURE = '6'
 OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
+OPCODE_SEND_CHUNK_HASH_TO_SERVER = '8'
 
 requested_data = '<server_data_here>'
 peers = {} # {peer_id:(server_addr, listening_addr)} --> addr stored as (ip_addr, port_number)
@@ -22,6 +23,9 @@ file_holders = {} # {file1_name: {chunk_1: (peer_id1, peer_id2, ...), chunk_2: (
                   #      set stored under the file_name
                   #      file_name is a string, the chunk number is an int, and the peer IDs are ints
 
+chunk_hashes = {} # {file1_name: {chunk_1: 'hex_dig', chunk_2: 'hex_dig', ...}, file2_name: {...}, ...}
+                  # ^--> dictionary of the file names (strings) as the first key layer. Under the filename is a dictionary of key
+                  #      value pairs. Each key is a chunk in that file and the value is the hex digest of that chunk
 
 def get_message_length(peer_socket):
     cur_substring = ''
@@ -144,19 +148,24 @@ def handle_peer(conn, addr):
             #print(f'server.py: start handle_peer, peers: {peers}')
     
 
-
         # Peer is telling the server what files it is willing to share
         if operation == OPCODE_RECORD_FILE_DATA:
             record_file_data(message, peer_id)
+
+        elif operation == OPCODE_SEND_CHUNK_HASH_TO_SERVER:
+            record_chunk_hash()
         
         # Peer is telling the server what file it wants to download
         elif operation == OPCODE_FILE_REQUEST_FROM_PEER:
             send_file(conn, peer_id, message)
-            #time.sleep(10) # TODO: Ensure that the file has completed downloading before moving on from this operation and repeating the while loop in handle_peer
 
 
     conn.close()
     #print(f'server.py: end of handle_peer, peers: {peers}')
+
+
+def record_chunk_hash():
+
 
 
 def send_chunk2(conn, chunk_set, chunk_num):
@@ -256,9 +265,6 @@ def send_file(conn, requester_id, file_name):
             else:
                 Exception('server.py: EXCEPTION invalid opcode from peer in send_file')
     #print("\n EXITING SEND FILE\n")
-
-
-
 
 
 
