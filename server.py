@@ -4,8 +4,7 @@ import random
 import time
 
 
-DOWNLOAD_QUEUE_LEN = 1
-CHUNK_SIZE = 256
+DOWNLOAD_QUEUE_LEN = 3
 
 OPCODE_RECORD_FILE_DATA = '3' # Received by peers when they connect and tell the server what files they want to share
 OPCODE_FILE_REQUEST_FROM_PEER = '4' # Received when a peer is requesting to download a file
@@ -153,9 +152,12 @@ def handle_peer(conn, addr):
             peers[peer_id] = (addr, (addr[0], peer_listening_port))
             #print(f'server.py: start handle_peer, peers: {peers}')
     
+        if operation == OPCODE_REQ_CHUNK_HASH:
+            print(f"server.py: sending chunk hash: {message}")
+            send_chunk_hash(message, conn)
 
         # Peer is telling the server what files it is willing to share
-        if operation == OPCODE_RECORD_FILE_DATA:
+        elif operation == OPCODE_RECORD_FILE_DATA:
             record_file_data(message, peer_id)
 
         elif operation == OPCODE_SEND_CHUNK_HASH_TO_SERVER:
@@ -181,10 +183,10 @@ def send_chunk_hash(message, conn):
             conn    - the server's connection to the peer. This is used to send the hash back to the peer
 
     """
-    print("\nserver.py: send_chunk_hash called\n")
+    print(f"\nserver.py: send_chunk_hash message: {message}\n")
     message_parts = message.split('#')
-    file_name = message_parts[2]
-    chunk_num = int(message_parts[3])
+    file_name = message_parts[0]
+    chunk_num = int(message_parts[1])
     chunk_hash = chunk_hashes[file_name][chunk_num]
     chunk_hash = chunk_hash.encode('utf-8')
     message_length = str(len(chunk_hash)) + '#'
@@ -271,11 +273,11 @@ def send_file(conn, requester_id, file_name):
             download_result = conn.recv(peer_message_length).decode('utf-8')
             #print(f'server.py: Server received message while waiting for chunks to download\n          message: {download_result}')
 
-            if download_result[0] == OPCODE_REQ_CHUNK_HASH:
-                print(f"server.py: sending chunk hash: {download_result}")
-                send_chunk_hash(download_result, conn)
+            #if download_result[0] == OPCODE_REQ_CHUNK_HASH:
+            #    print(f"server.py: sending chunk hash: {download_result}")
+            #    send_chunk_hash(download_result, conn)
 
-            elif download_result[0] == OPCODE_CHUNK_DOWNLOAD_SUCCESS:
+            if download_result[0] == OPCODE_CHUNK_DOWNLOAD_SUCCESS:
                 # get downloaded chunk number
                 downloaded_chunk = int(download_result.split('#')[2])
 

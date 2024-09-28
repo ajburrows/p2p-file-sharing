@@ -5,7 +5,7 @@ import time
 import os
 
 CHUNK_SIZE = 8
-DOWNLOAD_QUEUE_LEN = 1
+DOWNLOAD_QUEUE_LEN = 3
 
 OPCODE_REQ_CHUNK_FROM_SERVER = '0'
 OPCODE_INVALID_DATA_RECEIVED = '0'
@@ -206,13 +206,14 @@ class Peer:
         self.server_socket.send(message)
 
 
-    def send_server_message(self, opcode, msg_content):
+    def send_server_message(self, socket, opcode, msg_content):
         message = self.make_message_header(opcode)
         message += msg_content
         message = message.encode('utf-8')
         message_length = str(len(message)) + "#"
-        self.server_socket.send(message_length.encode('utf-8'))
-        self.server_socket.send(message)
+        socket.send(message_length.encode('utf-8'))
+        print(f'  peer.py send_server_message peer sending: {message}')
+        socket.send(message)
 
 
     def upload_chunk_hashes(self):
@@ -233,7 +234,7 @@ class Peer:
 
                 # Send the hash to the server
                 #print(f'sending chunk_hash {message}')
-                self.send_server_message(OPCODE_SEND_CHUNK_HASH_TO_SERVER, message)
+                self.send_server_message(self.server_socket, OPCODE_SEND_CHUNK_HASH_TO_SERVER, message)
 
 
     def hash_chunk(self, chunk):
@@ -401,14 +402,18 @@ class Peer:
 
 
     def verify_chunk_integrity(self, chunk_received, file_name, chunk_num):
+        # create new socket to communicate with server
+        new_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        new_server_socket.connect((self.host, self.port))
+
         # get the correct chunk hash from the server
         request_message = file_name + '#' + str(chunk_num)
-        self.send_server_message(OPCODE_REQ_CHUNK_HASH, request_message)
+        self.send_server_message(new_server_socket, OPCODE_REQ_CHUNK_HASH, request_message)
         time.sleep(0.05)
         print(f'  peer.py: peer requested hash from server: {request_message}')
-        message_length = self.get_message_length(self.server_socket)
+        message_length = self.get_message_length(new_server_socket)
         print(f'  peer.py: peer received message_length: {message_length}')
-        original_hash = self.server_socket.recv(message_length).decode('utf-8')
+        original_hash = new_server_socket.recv(message_length).decode('utf-8')
         print(f'  peer.py: peer received original_hash: {original_hash}')
 
         # hash the chunk that was received from the peer
@@ -417,9 +422,11 @@ class Peer:
 
         # compare the two
         #print(f'\noriginal_hash: {original_hash}, received_hash: {received_hash}\n')
+        new_server_socket.close()
         if original_hash == received_hash:
             return True
         return False
+
 
     def get_message_length(self, conn):
         #print(f'  peer.py: Peer{self.peer_id} reading message_length()')
