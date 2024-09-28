@@ -12,6 +12,7 @@ OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 OPCODE_FAILURE = '6'
 OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
 OPCODE_SEND_CHUNK_HASH_TO_SERVER = '8'
+OPCODE_REQ_CHUNK_HASH = '9'
 
 requested_data = '<server_data_here>'
 peers = {} # {peer_id:(server_addr, listening_addr)} --> addr stored as (ip_addr, port_number)
@@ -159,7 +160,9 @@ def handle_peer(conn, addr):
 
         elif operation == OPCODE_SEND_CHUNK_HASH_TO_SERVER:
             record_chunk_hash(message)
-        
+
+        elif operation == OPCODE_REQ_CHUNK_HASH:
+            send_chunk_hash(message, conn) 
         # Peer is telling the server what file it wants to download
         elif operation == OPCODE_FILE_REQUEST_FROM_PEER:
             send_file(conn, peer_id, message)
@@ -167,6 +170,24 @@ def handle_peer(conn, addr):
 
     conn.close()
     #print(f'server.py: end of handle_peer, peers: {peers}')
+
+
+def send_chunk_hash(message, conn):
+    """ 
+        When the peer needs to verify the integrity of the data it receives, it asks for the original chunk hash. These are stored in the chunk_hashes dictionary
+        and are initialized when a peer first uploads a file.
+
+        Inputs:
+            message - formated as file_name # chunk_num
+                      where file_name and chunk_num are the name of the file and the chunk number in that file that the peer wants the hash for.
+            conn    - the server's connection to the peer. This is used to send the hash back to the peer
+
+    """
+    message_parts = message.split('#')
+    file_name = message_parts[0]
+    chunk_num = int(message_parts[1])
+    chunk_hash = chunk_hashes[file_name][chunk_num]
+    conn.send(chunk_hash.encode('utf-8'))
 
 
 def record_chunk_hash(message):

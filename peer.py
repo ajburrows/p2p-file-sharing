@@ -23,6 +23,7 @@ OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
 
 OPCODE_SEND_CHUNK_HASH_TO_SERVER = '8'
+OPCODE_REQ_CHUNK_HASH = '9'
 
 class Peer:
     def __init__(self, peer_id, host, port, files_dir):
@@ -219,6 +220,7 @@ class Peer:
             and send that to the server.
 
         """
+
         #print(f"self.files: {self.files}")
         for file_name in self.files:
             chunk_set = self.files[file_name]
@@ -384,15 +386,25 @@ class Peer:
             except:
                 print(f'  peer.py: Peer{self.peer_id} failed to receive chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]')
             finally:
+                # TODO: verify the integrity of the data
+                
                 peer_socket.close()
                 #print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
-
-
-            # TODO: verify the integrity of the data
-
         else:
             raise Exception('  peer.py: Peer is not connected to a server.')
 
+
+    def verify_chunk_integrity(self, chunk_received, file_name, chunk_num):
+        # get the correct chunk hash from the server
+        message = file_name + '#' + chunk_num
+        self.send_server_message(OPCODE_REQ_CHUNK_HASH, message)
+        chunk_hash = self.server_socket.recv('utf-8').decode()
+
+        # hash the chunk that was received from the peer
+
+
+        # compare the two
+        return None
 
     def get_message_length(self, conn):
         #print(f'  peer.py: Peer{self.peer_id} reading message_length()')
