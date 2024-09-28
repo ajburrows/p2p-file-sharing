@@ -5,7 +5,7 @@ import time
 import os
 
 CHUNK_SIZE = 8
-DOWNLOAD_QUEUE_LEN = 3
+DOWNLOAD_QUEUE_LEN = 1
 
 OPCODE_REQ_CHUNK_FROM_SERVER = '0'
 OPCODE_INVALID_DATA_RECEIVED = '0'
@@ -19,6 +19,7 @@ OPCODE_DOWNLOAD_FILE_FROM_SERVER = '4'
 
 OPCODE_SEND_CHUNK_TO_PEER = '5'
 OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
+OPCODE_FAILURE = '6'
 
 OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
 
@@ -348,24 +349,27 @@ class Peer:
             
 
             # try to download the chunk from the peer
-            try:
-                # message format: opcode # file_name # chunk_num
-                message = OPCODE_REQ_CHUNK_FROM_PEER + '#' + file_name + '#' + str(chunk_num)
-                message = message.encode('utf-8')
-                message_length = str(len(message)) + '#'
-                peer_socket.send(message_length.encode('utf-8'))
-                peer_socket.send(message)
-                #print(f'  peer.py: Peer{self.peer_id} requested chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]\n           message: {message}')
+            #try:
+            # message format: opcode # file_name # chunk_num
+            message = OPCODE_REQ_CHUNK_FROM_PEER + '#' + file_name + '#' + str(chunk_num)
+            message = message.encode('utf-8')
+            message_length = str(len(message)) + '#'
+            peer_socket.send(message_length.encode('utf-8'))
+            peer_socket.send(message)
+            #print(f'  peer.py: Peer{self.peer_id} requested chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]\n           message: {message}')
 
-                response_length = self.get_message_length(peer_socket) # peer is sending back "12" and it's breaking under get_message_length
-                peer_response = peer_socket.recv(response_length).decode('utf-8')
-                #print(f'  peer.py: Peer{self.peer_id} received response from peer [{peer_ip}:{peer_port}]\n           message: {peer_response}')
+            response_length = self.get_message_length(peer_socket) # peer is sending back "12" and it's breaking under get_message_length
+            peer_response = peer_socket.recv(response_length).decode('utf-8')
+            #print(f'  peer.py: Peer{self.peer_id} received response from peer [{peer_ip}:{peer_port}]\n           message: {peer_response}')
 
-                # ensure the opcode is correct
-                if peer_response[0] != OPCODE_SEND_CHUNK_TO_PEER:
-                    print(f'  peer.py: ERROR Peer{self.peer_id} requested chunk from peer[{peer_ip}:{peer_port}], but received wrong opcode: {peer_response[0]}')
-                else:
-                    chunk = peer_response.split('#')[1]
+            # ensure the opcode is correct
+            if peer_response[0] != OPCODE_SEND_CHUNK_TO_PEER:
+                print(f'  peer.py: ERROR Peer{self.peer_id} requested chunk from peer[{peer_ip}:{peer_port}], but received wrong opcode: {peer_response[0]}')
+            else:
+                chunk = peer_response.split('#')[1]
+
+                if self.verify_chunk_integrity(chunk, file_name, chunk_num) == True:
+                        
                     #print(f'  peer.py: Peer{self.peer_id} received chunk\n           chunk_num: {chunk_num}\n           chunk_data: {chunk}') 
 
                     # store the chunk
@@ -381,14 +385,16 @@ class Peer:
                     #print(f'  peer.py: Peer{self.peer_id} telling server chunk ({chunk_num}) was downloaded.')
                     #print(f'  peer.py: Peer{self.peer_id} self.files: {self.files}')
                     print(f'  peer.py: Peer{self.peer_id} received chunk ({chunk_num})\n')#n          Peer{self.peer_id}.files: {self.files}\n')
+                
+                else:
+                    print(f'\nTESTING: CHUNK HASHES MISMATCHED\n')
+                    server_message = OPCODE_FAILURE + '#' + peer_ip + ':' + str(peer_port) + '#' + str(chunk_num)
+                
 
-                
-            except:
-                print(f'  peer.py: Peer{self.peer_id} failed to receive chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]')
-            finally:
-                # TODO: verify the integrity of the data
-                
-                peer_socket.close()
+            #except:
+            #    print(f'  peer.py: Peer{self.peer_id} failed to receive chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]')
+            #finally:
+            peer_socket.close()
                 #print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
         else:
             raise Exception('  peer.py: Peer is not connected to a server.')
@@ -396,15 +402,24 @@ class Peer:
 
     def verify_chunk_integrity(self, chunk_received, file_name, chunk_num):
         # get the correct chunk hash from the server
-        message = file_name + '#' + chunk_num
-        self.send_server_message(OPCODE_REQ_CHUNK_HASH, message)
-        chunk_hash = self.server_socket.recv('utf-8').decode()
+        request_message = file_name + '#' + str(chunk_num)
+        self.send_server_message(OPCODE_REQ_CHUNK_HASH, request_message)
+        time.sleep(0.05)
+        print(f'  peer.py: peer requested hash from server: {request_message}')
+        message_length = self.get_message_length(self.server_socket)
+        print(f'  peer.py: peer received message_length: {message_length}')
+        original_hash = self.server_socket.recv(message_length).decode('utf-8')
+        print(f'  peer.py: peer received original_hash: {original_hash}')
 
         # hash the chunk that was received from the peer
-
+        received_hash = self.hash_chunk(chunk_received)
+        print(f'  peer.py: peer calculated hash: {received_hash}')
 
         # compare the two
-        return None
+        #print(f'\noriginal_hash: {original_hash}, received_hash: {received_hash}\n')
+        if original_hash == received_hash:
+            return True
+        return False
 
     def get_message_length(self, conn):
         #print(f'  peer.py: Peer{self.peer_id} reading message_length()')
