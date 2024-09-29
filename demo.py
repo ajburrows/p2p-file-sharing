@@ -63,7 +63,7 @@ def start_demo():
     print()
 
     peer3.req_chunk()
-    time.sleep(2)
+    time.sleep(9)
     print()
 
     peer2.close_peer()
@@ -84,7 +84,7 @@ def test_upload_file_data():
 
     peer1, peer1_thread = create_new_peer(1, HOST, PORT, peer1_files_dir)
     print()
-    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir, True)
+    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir, False)
     print()
     peer3, peer3_thread = create_new_peer(3, HOST, PORT, '')
     print()
@@ -108,6 +108,7 @@ def test_upload_file_data():
 
     print('\n  demo.py: PEER3 ATTEMPTING DOWNLOAD')
     peer3.download_file('f1_dir1.txt')
+    time.sleep(5)
     #peer4.download_file('f1_dir1.txt')
     print()
 

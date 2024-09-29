@@ -26,6 +26,9 @@ OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
 OPCODE_SEND_CHUNK_HASH_TO_SERVER = '8'
 OPCODE_REQ_CHUNK_HASH = '9'
 
+
+OPCODE_DOWNLOAD_COMPLETE = 'a'
+
 class Peer:
     def __init__(self, peer_id, host, port, files_dir, malicious=False):
         """
@@ -505,12 +508,16 @@ class Peer:
         self.needed_file_chunks[file_name] = needed_chunks
 
 
-        while len(self.needed_file_chunks[file_name]) > DOWNLOAD_QUEUE_LEN:
+        while len(self.needed_file_chunks[file_name]) > 0:
             # read the chunk location info
             message_length = self.get_message_length(self.server_socket)
             req_chunk_message = self.server_socket.recv(message_length).decode('utf-8')
+
+            if req_chunk_message == OPCODE_DOWNLOAD_COMPLETE:
+                break
             #print(f'  peer.py: Peer{self.peer_id} received req_chunk_message from server.\n           message: {req_chunk_message}\n           msg_length: {message_length}\n')
             #time.sleep(0.1)
+
             chunk_num, peer_ip, peer_port = get_req_chunk_info(req_chunk_message)
 
             # start a new thread to download that chunk
@@ -528,6 +535,7 @@ class Peer:
         for thread in self.req_threads:
             thread.join()
         #print(f'\n  peer.py: THREADS JOINED\n')
+        #print(f'\n peer self.files: {self.files}')
 
 
     def close_peer(self):
