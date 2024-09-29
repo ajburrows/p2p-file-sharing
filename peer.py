@@ -4,7 +4,7 @@ import socket
 import time
 import os
 
-CHUNK_SIZE = 8
+CHUNK_SIZE = 1024
 DOWNLOAD_QUEUE_LEN = 3
 
 OPCODE_REQ_CHUNK_FROM_SERVER = '0'
@@ -167,9 +167,9 @@ class Peer:
 
         # if this peer is malicious, modify the data
         if self.malicious:
-            print(f'  peer.py: modifying chunk. origingal: {chunk}')
+            #print(f'  peer.py: modifying chunk. origingal: {chunk}')
             chunk = 'INVALID_'
-            print(f'  peer.py: chunk has been modified: {chunk}')
+            #print(f'  peer.py: chunk has been modified: {chunk}')
         
         message = OPCODE_SEND_CHUNK_TO_PEER + '#' + chunk
         message = message.encode('utf-8')
@@ -179,7 +179,7 @@ class Peer:
 
         peer_socket.send(message_length.encode('utf-8'))
         peer_socket.send(message)
-        print(f'  peer.py: peer sent message to peer: {message}')
+        #print(f'  peer.py: peer sent message to peer: {message}')
         return
 
 
@@ -273,7 +273,7 @@ class Peer:
             full_path = os.path.join(self.files_dir, file)
             # Check if the entry is a file
             if os.path.isfile(full_path):
-                self.files[file] = self.file_to_chunks(full_path, 8)
+                self.files[file] = self.file_to_chunks(full_path, CHUNK_SIZE)
         #print(f'  peer.py: files - {self.files}')
         
 
@@ -353,7 +353,7 @@ class Peer:
 
         #server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if self.server_socket:
-            print(f'  peer.py: Peer{self.peer_id} requesting chunk ({chunk_num}) from [{peer_ip}:{peer_port}]')
+            #print(f'  peer.py: Peer{self.peer_id} requesting chunk ({chunk_num}) from [{peer_ip}:{peer_port}]')
 
             # Connect to the peer and download the data from them
             peer_socket = self.connect_to_peer(peer_ip, peer_port)
@@ -369,7 +369,7 @@ class Peer:
                 message_length = str(len(message)) + '#'
                 peer_socket.send(message_length.encode('utf-8'))
                 peer_socket.send(message)
-                #print(f'  peer.py: Peer{self.peer_id} requested chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]\n           message: {message}')
+                print(f'  peer.py: Peer{self.peer_id} requested chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]')#\n           message: {message}')
 
                 response_length = self.get_message_length(peer_socket) # peer is sending back "12" and it's breaking under get_message_length
                 peer_response = peer_socket.recv(response_length).decode('utf-8')
@@ -406,7 +406,7 @@ class Peer:
                         server_message_length = str(len(server_message)) + '#'
                         self.server_socket.send(server_message_length.encode('utf-8'))
                         self.server_socket.send(server_message)
-                        print(f'  peer.py: Peer has notified server of receiving a bad chunk and who gave the bad chunk')
+                        #print(f'  peer.py: Peer has notified server of receiving a bad chunk and who gave the bad chunk')
                 
 
             except:
