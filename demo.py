@@ -84,7 +84,7 @@ def test_upload_file_data():
 
     peer1, peer1_thread = create_new_peer(1, HOST, PORT, peer1_files_dir)
     print()
-    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir, False)
+    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir, True)
     print()
     peer3, peer3_thread = create_new_peer(3, HOST, PORT, '')
     print()

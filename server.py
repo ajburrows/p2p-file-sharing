@@ -271,58 +271,56 @@ def send_file(conn, requester_id, file_name):
 
     # TODO: For some reason peers will end up requesting the same chunk again after they have downloaded a chunk. They also occasionally request a chunk from themselves. Fix those.
     while len(needed_chunks) > 0:
-        
-        needed_chunks_cpy = needed_chunks.copy()
-        for chunk_num in needed_chunks_cpy:
-            #print(f'\nTESTING: needed_chunks: {needed_chunks}')
-            #print(f'TESTING: queued_chunks: {queued_chunks}')
+        chunk_num = find_rarest_chunk(file_name)
+        #print(f'\nTESTING: needed_chunks: {needed_chunks}')
+        #print(f'TESTING: queued_chunks: {queued_chunks}')
 
-            # only queue up DOWNLOAD_QUEUE_LEN concurrent chunk downloads at a time
-            if len(queued_chunks) < DOWNLOAD_QUEUE_LEN and chunk_num < len(chunk_set.keys()) and chunk_num not in queued_chunks:
-                #print(f'TESTING: queing chunk: {chunk_num}')
-                queued_chunks.add(chunk_num)
-                send_chunk2(conn, chunk_set, chunk_num)
-                time.sleep(0.05) # give time for peer response to finish sending here
+        # only queue up DOWNLOAD_QUEUE_LEN concurrent chunk downloads at a time
+        if len(queued_chunks) < DOWNLOAD_QUEUE_LEN and chunk_num < len(chunk_set.keys()) and chunk_num not in queued_chunks: #TODO: test if you can remove chunk_num < len(chunk_set.keys())
+            #print(f'TESTING: queing chunk: {chunk_num}')
+            queued_chunks.add(chunk_num)
+            send_chunk2(conn, chunk_set, chunk_num)
+            time.sleep(0.05) # give time for peer response to finish sending here
+        else:
+            # download_result format: OPCODE + '#' + PEER_ADDR + '#' + CHUNK_NUM --> PEER_ADDR is the ADDR of the peer that sent the chunk
+            peer_message_length = get_message_length(conn)
+            download_result = conn.recv(peer_message_length).decode('utf-8')
+            #print(f'server.py: Server received message while waiting for chunks to download\n          message: {download_result}')
+
+            #if download_result[0] == OPCODE_REQ_CHUNK_HASH:
+            #    print(f"server.py: sending chunk hash: {download_result}")
+            #    send_chunk_hash(download_result, conn)
+
+            if download_result[0] == OPCODE_CHUNK_DOWNLOAD_SUCCESS:
+                # get downloaded chunk number
+                downloaded_chunk = int(download_result.split('#')[2])
+
+                # add this peer to the set of peers who have the chunk
+                file_holders[file_name][downloaded_chunk].add(requester_id)
+
+                # update the remaining chunks of the file that need to be downloaded
+                #needed_chunks.remove(downloaded_chunk)
+
+                # remove the chunk from the download queue
+                queued_chunks.remove(downloaded_chunk)
+                needed_chunks.remove(downloaded_chunk)
+
+
+            elif download_result[0] == OPCODE_FAILURE:
+                #print(f'server.py: peer FAILED to donwload chunk')
+                # the data was corrupted so remove the peer from the server's lists
+                #failed_peer_id = int(download_result.split('#')[1])
+                #del peers[failed_peer_id]
+                #file_holders[file_name][downloaded_chunk].discard(failed_peer_id)
+
+                # try to download the chunk again
+                #send_chunk2(conn, chunk_set, downloaded_chunk)
+                downloaded_chunk = int(download_result.split('#')[2])
+                queued_chunks.remove(downloaded_chunk)
+
+            # triggers if the OPCODE was neither 0 or 1
             else:
-                # download_result format: OPCODE + '#' + PEER_ADDR + '#' + CHUNK_NUM --> PEER_ADDR is the ADDR of the peer that sent the chunk
-                peer_message_length = get_message_length(conn)
-                download_result = conn.recv(peer_message_length).decode('utf-8')
-                #print(f'server.py: Server received message while waiting for chunks to download\n          message: {download_result}')
-
-                #if download_result[0] == OPCODE_REQ_CHUNK_HASH:
-                #    print(f"server.py: sending chunk hash: {download_result}")
-                #    send_chunk_hash(download_result, conn)
-
-                if download_result[0] == OPCODE_CHUNK_DOWNLOAD_SUCCESS:
-                    # get downloaded chunk number
-                    downloaded_chunk = int(download_result.split('#')[2])
-
-                    # add this peer to the set of peers who have the chunk
-                    file_holders[file_name][downloaded_chunk].add(requester_id)
-
-                    # update the remaining chunks of the file that need to be downloaded
-                    #needed_chunks.remove(downloaded_chunk)
-
-                    # remove the chunk from the download queue
-                    queued_chunks.remove(downloaded_chunk)
-                    needed_chunks.remove(downloaded_chunk)
-
-
-                elif download_result[0] == OPCODE_FAILURE:
-                    #print(f'server.py: peer FAILED to donwload chunk')
-                    # the data was corrupted so remove the peer from the server's lists
-                    #failed_peer_id = int(download_result.split('#')[1])
-                    #del peers[failed_peer_id]
-                    #file_holders[file_name][downloaded_chunk].discard(failed_peer_id)
-
-                    # try to download the chunk again
-                    #send_chunk2(conn, chunk_set, downloaded_chunk)
-                    downloaded_chunk = int(download_result.split('#')[2])
-                    queued_chunks.remove(downloaded_chunk)
-
-                # triggers if the OPCODE was neither 0 or 1
-                else:
-                    Exception('server.py: EXCEPTION invalid opcode from peer in send_file')
+                Exception('server.py: EXCEPTION invalid opcode from peer in send_file')
         #print('TESTING: for loop finished')
         outdated_queues = set()
         for chunk_num in queued_chunks:
@@ -333,7 +331,7 @@ def send_file(conn, requester_id, file_name):
             queued_chunks.remove(chunk_num)
 
     #print("\n\nEXITING SEND FILE\n\n")
-    #print(f'TESTING: files {file_holders}')
+    print(f'TESTING: files {file_holders}')
 
     #send message to tell peer download is complete
     message = '1#' + OPCODE_DOWNLOAD_COMPLETE
