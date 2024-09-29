@@ -359,52 +359,57 @@ class Peer:
             
 
             # try to download the chunk from the peer
-            #try:
-            # message format: opcode # file_name # chunk_num
-            message = OPCODE_REQ_CHUNK_FROM_PEER + '#' + file_name + '#' + str(chunk_num)
-            message = message.encode('utf-8')
-            message_length = str(len(message)) + '#'
-            peer_socket.send(message_length.encode('utf-8'))
-            peer_socket.send(message)
-            #print(f'  peer.py: Peer{self.peer_id} requested chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]\n           message: {message}')
+            try:
+                # message format: opcode # file_name # chunk_num
+                message = OPCODE_REQ_CHUNK_FROM_PEER + '#' + file_name + '#' + str(chunk_num)
+                message = message.encode('utf-8')
+                message_length = str(len(message)) + '#'
+                peer_socket.send(message_length.encode('utf-8'))
+                peer_socket.send(message)
+                #print(f'  peer.py: Peer{self.peer_id} requested chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]\n           message: {message}')
 
-            response_length = self.get_message_length(peer_socket) # peer is sending back "12" and it's breaking under get_message_length
-            peer_response = peer_socket.recv(response_length).decode('utf-8')
-            #print(f'  peer.py: Peer{self.peer_id} received response from peer [{peer_ip}:{peer_port}]\n           message: {peer_response}')
+                response_length = self.get_message_length(peer_socket) # peer is sending back "12" and it's breaking under get_message_length
+                peer_response = peer_socket.recv(response_length).decode('utf-8')
+                #print(f'  peer.py: Peer{self.peer_id} received response from peer [{peer_ip}:{peer_port}]\n           message: {peer_response}')
 
-            # ensure the opcode is correct
-            if peer_response[0] != OPCODE_SEND_CHUNK_TO_PEER:
-                print(f'  peer.py: ERROR Peer{self.peer_id} requested chunk from peer[{peer_ip}:{peer_port}], but received wrong opcode: {peer_response[0]}')
-            else:
-                chunk = peer_response.split('#')[1]
-
-                if self.verify_chunk_integrity(chunk, file_name, chunk_num) == True:
-                        
-                    #print(f'  peer.py: Peer{self.peer_id} received chunk\n           chunk_num: {chunk_num}\n           chunk_data: {chunk}') 
-
-                    # store the chunk
-                    self.files[file_name][chunk_num] = chunk # store the chunk data
-                    self.needed_file_chunks[file_name].remove(chunk_num) # update needed chunks
-
-                    # notify the server that this peer has the chunk and can thus share it with other peers
-                    server_message = OPCODE_CHUNK_DOWNLOAD_SUCCESS + '#' + peer_ip + ':' + str(peer_port) + '#' + str(chunk_num)
-                    server_message = server_message.encode('utf-8')
-                    server_message_length = str(len(server_message)) + '#'
-                    self.server_socket.send(server_message_length.encode('utf-8'))
-                    self.server_socket.send(server_message)
-                    #print(f'  peer.py: Peer{self.peer_id} telling server chunk ({chunk_num}) was downloaded.')
-                    #print(f'  peer.py: Peer{self.peer_id} self.files: {self.files}')
-                    print(f'  peer.py: Peer{self.peer_id} received chunk ({chunk_num})\n')#n          Peer{self.peer_id}.files: {self.files}\n')
-                
+                # ensure the opcode is correct
+                if peer_response[0] != OPCODE_SEND_CHUNK_TO_PEER:
+                    print(f'  peer.py: ERROR Peer{self.peer_id} requested chunk from peer[{peer_ip}:{peer_port}], but received wrong opcode: {peer_response[0]}')
                 else:
-                    print(f'\nTESTING: CHUNK HASHES MISMATCHED\n')
-                    server_message = OPCODE_FAILURE + '#' + peer_ip + ':' + str(peer_port) + '#' + str(chunk_num)
+                    chunk = peer_response.split('#')[1]
+
+                    if self.verify_chunk_integrity(chunk, file_name, chunk_num) == True:
+                            
+                        #print(f'  peer.py: Peer{self.peer_id} received chunk\n           chunk_num: {chunk_num}\n           chunk_data: {chunk}') 
+
+                        # store the chunk
+                        self.files[file_name][chunk_num] = chunk # store the chunk data
+                        self.needed_file_chunks[file_name].remove(chunk_num) # update needed chunks
+
+                        # notify the server that this peer has the chunk and can thus share it with other peers
+                        server_message = OPCODE_CHUNK_DOWNLOAD_SUCCESS + '#' + peer_ip + ':' + str(peer_port) + '#' + str(chunk_num)
+                        server_message = server_message.encode('utf-8')
+                        server_message_length = str(len(server_message)) + '#'
+                        self.server_socket.send(server_message_length.encode('utf-8'))
+                        self.server_socket.send(server_message)
+                        #print(f'  peer.py: Peer{self.peer_id} telling server chunk ({chunk_num}) was downloaded.')
+                        #print(f'  peer.py: Peer{self.peer_id} self.files: {self.files}')
+                        print(f'  peer.py: Peer{self.peer_id} received chunk ({chunk_num})\n')#n          Peer{self.peer_id}.files: {self.files}\n')
+                    
+                    else:
+                        print(f'  peer.py: discarding chunk ({chunk_num}) - hashes mismatched')
+                        server_message = OPCODE_FAILURE + '#' + peer_ip + ':' + str(peer_port) + '#' + str(chunk_num)
+                        server_message = server_message.encode('utf-8')
+                        server_message_length = str(len(server_message)) + '#'
+                        self.server_socket.send(server_message_length.encode('utf-8'))
+                        self.server_socket.send(server_message)
+                        print(f'  peer.py: Peer has notified server of receiving a bad chunk and who gave the bad chunk')
                 
 
-            #except:
-            #    print(f'  peer.py: Peer{self.peer_id} failed to receive chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]')
-            #finally:
-            peer_socket.close()
+            except:
+                print(f'  peer.py: Peer{self.peer_id} failed to receive chunk ({chunk_num}) from peer [{peer_ip}:{peer_port}]')
+            finally:
+                peer_socket.close()
                 #print(f'  peer.py: Peer{self.peer_id} closed socket with peer [{peer_ip}:{peer_port}]')
         else:
             raise Exception('  peer.py: Peer is not connected to a server.')
