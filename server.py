@@ -191,9 +191,9 @@ def send_chunk_hash(message, conn):
     chunk_hash = chunk_hash.encode('utf-8')
     message_length = str(len(chunk_hash)) + '#'
     conn.send(message_length.encode('utf-8'))
-    print(f'server.py: sent message_length: {message_length}')
+    #print(f'server.py: sent message_length: {message_length}')
     conn.send(chunk_hash)
-    print(f'server.py: sent chunk_hash: {chunk_hash}')
+    #print(f'server.py: sent chunk_hash: {chunk_hash}')
 
 
 def record_chunk_hash(message):

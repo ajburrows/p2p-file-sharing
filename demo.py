@@ -21,8 +21,8 @@ def stop_server(server_process):
         server_process.kill()  # Forcefully kill the server if it does not terminate
         print("  demo.py: Server killed.")
     
-def create_new_peer(peer_id, host, port, files_dir):
-    new_peer = Peer(peer_id=peer_id, host=host, port=port, files_dir=files_dir)
+def create_new_peer(peer_id, host, port, files_dir, malicious = False):
+    new_peer = Peer(peer_id=peer_id, host=host, port=port, files_dir=files_dir, malicious=malicious)
     new_peer.create_server_socket()
     new_peer.connect_to_server()
     time.sleep(1)
@@ -44,8 +44,7 @@ def start_demo():
     print()
 
     peer1, peer1_thread = create_new_peer(1, HOST, PORT, peer1_files_dir)
-    print()
-    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer2_files_dir)
+    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer2_files_dir, True)
     print()
     peer3, peer3_thread = create_new_peer(3, HOST, PORT, peer3_files_dir)
     print()
@@ -85,7 +84,7 @@ def test_upload_file_data():
 
     peer1, peer1_thread = create_new_peer(1, HOST, PORT, peer1_files_dir)
     print()
-    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir)
+    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir, True)
     print()
     peer3, peer3_thread = create_new_peer(3, HOST, PORT, '')
     print()

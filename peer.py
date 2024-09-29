@@ -27,7 +27,7 @@ OPCODE_SEND_CHUNK_HASH_TO_SERVER = '8'
 OPCODE_REQ_CHUNK_HASH = '9'
 
 class Peer:
-    def __init__(self, peer_id, host, port, files_dir):
+    def __init__(self, peer_id, host, port, files_dir, malicious=False):
         """
             Inputs:
                         peer_id - an integer used to identify the peer and help with debugging (int)
@@ -46,6 +46,7 @@ class Peer:
                       file_data - this is where the data being downloaded from other peers is stored
                           files - a dictionary that stores the files as chunks
                     req_threads - a list of the threads that are used to request chunks from other peers
+                      malicious - a boolean where if True, this peer will intentionally modify data to give incorrect chunks that should be discarded by peers 
 
         """
 
@@ -60,6 +61,7 @@ class Peer:
         self.files = {} # format: {file_name_1: {chunk_1: 'str1', chunk2: 'str2', ...}, file_name_2: {}, ...}
         self.req_threads = []
         self.needed_file_chunks = {}
+        self.malicious = malicious
         #print(f'  peer.py: Created new peer id: {peer_id}, host: {host}, port: {port}, file_dir: {files_dir}')
 
 
@@ -159,6 +161,13 @@ class Peer:
 
     def send_chunk_to_peer(self, peer_socket, file_name, chunk_num):
         chunk = self.files[file_name][chunk_num]
+
+        # if this peer is malicious, modify the data
+        if self.malicious:
+            print(f'  peer.py: modifying chunk. origingal: {chunk}')
+            chunk = 'INVALID_'
+            print(f'  peer.py: chunk has been modified: {chunk}')
+        
         message = OPCODE_SEND_CHUNK_TO_PEER + '#' + chunk
         message = message.encode('utf-8')
         message_length = str(len(message)) + '#'
@@ -167,6 +176,7 @@ class Peer:
 
         peer_socket.send(message_length.encode('utf-8'))
         peer_socket.send(message)
+        print(f'  peer.py: peer sent message to peer: {message}')
         return
 
 
@@ -212,7 +222,6 @@ class Peer:
         message = message.encode('utf-8')
         message_length = str(len(message)) + "#"
         socket.send(message_length.encode('utf-8'))
-        print(f'  peer.py send_server_message peer sending: {message}')
         socket.send(message)
 
 
@@ -410,15 +419,15 @@ class Peer:
         request_message = file_name + '#' + str(chunk_num)
         self.send_server_message(new_server_socket, OPCODE_REQ_CHUNK_HASH, request_message)
         time.sleep(0.05)
-        print(f'  peer.py: peer requested hash from server: {request_message}')
+        #print(f'  peer.py: peer requested hash from server: {request_message}')
         message_length = self.get_message_length(new_server_socket)
-        print(f'  peer.py: peer received message_length: {message_length}')
+        #print(f'  peer.py: peer received message_length: {message_length}')
         original_hash = new_server_socket.recv(message_length).decode('utf-8')
-        print(f'  peer.py: peer received original_hash: {original_hash}')
+        #print(f'  peer.py: peer received original_hash: {original_hash}')
 
         # hash the chunk that was received from the peer
         received_hash = self.hash_chunk(chunk_received)
-        print(f'  peer.py: peer calculated hash: {received_hash}')
+        #print(f'  peer.py: peer calculated hash: {received_hash}')
 
         # compare the two
         #print(f'\noriginal_hash: {original_hash}, received_hash: {received_hash}\n')
