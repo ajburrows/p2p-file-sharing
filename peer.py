@@ -65,6 +65,7 @@ class Peer:
         self.req_threads = []
         self.needed_file_chunks = {}
         self.malicious = malicious
+        self.download_threads = []
         #print(f'  peer.py: Created new peer id: {peer_id}, host: {host}, port: {port}, file_dir: {files_dir}')
 
 
@@ -460,6 +461,14 @@ class Peer:
             return None
 
 
+    def download_file_thread(self, file_name):
+        download_file_name = file_name
+        download_thread = threading.Thread(target=self.download_file, args=([file_name]))
+        # start a new thread to download that chunk
+        download_thread.start()
+        #self.download_threads.append(download_thread)
+
+
     def download_file(self, file_name):
 
         """
@@ -521,11 +530,6 @@ class Peer:
             chunk_num, peer_ip, peer_port = get_req_chunk_info(req_chunk_message)
 
             # start a new thread to download that chunk
-            """
-            thread = threading.Thread(target=self.handle_peer_request, args=(conn, addr))
-            handler_threads.append(thread)
-            thread.start()
-            """
             req_thread = threading.Thread(target=self.req_chunk2, args=(file_name, chunk_num, peer_ip, peer_port))
             req_thread.start()
             self.req_threads.append(req_thread)
