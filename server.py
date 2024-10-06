@@ -14,6 +14,7 @@ OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
 OPCODE_SEND_CHUNK_HASH_TO_SERVER = '8'
 OPCODE_REQ_CHUNK_HASH = '9'
 OPCODE_DOWNLOAD_COMPLETE = 'a'
+OPCODE_REQUEST_FILE_LIST = 'b'
 
 requested_data = '<server_data_here>'
 peers = {} # {peer_id:(server_addr, listening_addr)} --> addr stored as (ip_addr, port_number)
@@ -167,10 +168,30 @@ def handle_peer(conn, addr):
         # Peer is telling the server what file it wants to download
         elif operation == OPCODE_FILE_REQUEST_FROM_PEER:
             send_file(conn, peer_id, message)
+        
+        elif operation == OPCODE_REQUEST_FILE_LIST:
+            send_file_list(conn)
 
 
     conn.close()
     #print(f'server.py: end of handle_peer, peers: {peers}')
+
+
+def send_file_list(conn):
+    message = ''
+    for file_name in file_holders:
+        chunk_set = file_holders[file_name]
+        file_complete = True
+        for chunk in chunk_set:
+            if chunk_set[chunk] == None:
+                file_complete = False
+        if file_complete:
+            message += file_name+'#'
+    
+    message = message.encode('utf-8')
+    message_length = str(len(message)) + '#'
+    conn.send(message_length.encode('utf-8'))
+    conn.send(message)
 
 
 def send_chunk_hash(message, conn):
@@ -238,7 +259,7 @@ def send_chunk2(conn, chunk_set, chunk_num):
 
 def find_rarest_chunk(file_name, needed_chunks, queued_chunks):
 
-    print(f'FIND_RAREST_CHUNK:\nneeded_chunks: {needed_chunks}\nqueued_chunks: {queued_chunks}\n')
+    #print(f'FIND_RAREST_CHUNK:\nneeded_chunks: {needed_chunks}\nqueued_chunks: {queued_chunks}\n')
     chunk_set = file_holders[file_name]
     rarest = None
     for chunk_num in needed_chunks:

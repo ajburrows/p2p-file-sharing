@@ -1,6 +1,7 @@
 import threading
 import time
 from peer import Peer, peer_thread_function
+from demo_peer import DemoPeer, demo_peer_thread_function
 import subprocess
 
 HOST = '127.0.0.1'
@@ -33,47 +34,19 @@ def create_new_peer(peer_id, host, port, files_dir, malicious = False):
     return new_peer, new_peer_thread 
 
 
-
-def start_demo():
-    peer1_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files1'
-    peer2_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files2'
-    peer3_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files3'
-
-    server_process = start_server()
-    time.sleep(3)
-    print()
-
-    peer1, peer1_thread = create_new_peer(1, HOST, PORT, peer1_files_dir)
-    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer2_files_dir, True)
-    print()
-    peer3, peer3_thread = create_new_peer(3, HOST, PORT, peer3_files_dir)
-    print()
-
-
-    peer1.req_chunk()
-    time.sleep(4)
-    print()
-
-    peer2.req_chunk()
+def create_new_demo_peer(peer_id, host, port, malicious = False):
+    files_dir = input("Enter the directory of files that you want to share: ")
+    new_peer = DemoPeer(peer_id=peer_id, host=host, port=port, files_dir=files_dir, malicious=malicious)
+    new_peer.create_server_socket()
+    new_peer.connect_to_server()
+    time.sleep(1)
+    new_peer_thread = threading.Thread(target=peer_thread_function, args=(new_peer,))
+    new_peer_thread.daemon = True
+    new_peer_thread.start()
     time.sleep(2)
-    print()
+    return new_peer, new_peer_thread 
 
-    peer1.close_peer()
-    time.sleep(2)
-    print()
 
-    peer3.req_chunk()
-    time.sleep(9)
-    print()
-
-    peer2.close_peer()
-    peer3.close_peer()
-    print("  demo.py: All peers have closed.")
-    stop_server(server_process)
-    peer1_thread.join()
-    peer2_thread.join()
-    peer3_thread.join()
-    print("  demo.py: All peer threads have terminated.")
 
 def test_upload_file_data():
     peer1_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files1'
@@ -86,35 +59,26 @@ def test_upload_file_data():
     print("  demo.py: Peer1 has connected to server")
     peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir, True)
     print("  demo.py: Peer2 has connected to server")
-    peer3, peer3_thread = create_new_peer(3, HOST, PORT, '')
-    print("  demo.py: Peer3 has connected to server")
+    #peer3, peer3_thread = create_new_demo_peer(3, HOST, PORT)
+    #print("  demo.py: Peer3 has connected to server")
     peer4, peer4_thread = create_new_peer(4, HOST, PORT, '')
     print("  demo.py: Peer4 has connected to server")
     print('\n  demo.py: created peers')
 
     peer1.initialize_files()
-    time.sleep(0.5)
-    #print()
     peer1.upload_file_data()
-    time.sleep(0.5)
     peer1.upload_chunk_hashes()
-    time.sleep(0.5)
 
     peer2.initialize_files()
-    time.sleep(0.5)
-    print()
     peer2.upload_file_data()
-    time.sleep(0.5)
+    peer2.upload_chunk_hashes()
 
-    #peer4.initialize_files()
-    #time.sleep(0.5)
-    #peer4.upload_file_data()
-    #time.sleep(0.5)
-    #print('\n  demo.py: data uploaded')
+    print('\n  demo.py: data uploaded')
 
-    print('\n  demo.py: PEER3 ATTEMPTING DOWNLOAD')
-    peer3.download_file_thread('f1_dir1.txt')
-    time.sleep(1)
+    #print('\n  demo.py: PEER3 ATTEMPTING DOWNLOAD')
+    #peer3.download_file_thread()
+    print('\n  demo.py: Peer4 will download in 10 seconds')
+    time.sleep(10)
     print('\n  demo.py: PEER4 ATTEMPTING DOWNLOAD')
     peer4.download_file_thread('f1_dir1.txt')
     print()
@@ -124,7 +88,7 @@ def test_upload_file_data():
     print('  demo.py: PEERS CLOSING')
     peer1.close_peer()
     peer2.close_peer()
-    peer3.close_peer()
+    #peer3.close_peer()
     peer4.close_peer()
     time.sleep(1)
     print()
@@ -132,7 +96,7 @@ def test_upload_file_data():
     stop_server(server_process)
     peer1_thread.join()
     peer2_thread.join()
-    peer3_thread.join()
+    #peer3_thread.join()
     peer4_thread.join()
     print("  demo.py: All peer threads have terminated.")
 
