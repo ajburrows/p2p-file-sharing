@@ -30,6 +30,7 @@ chunk_hashes = {} # {file1_name: {chunk_1: 'hex_dig', chunk_2: 'hex_dig', ...}, 
                   # ^--> dictionary of the file names (strings) as the first key layer. Under the filename is a dictionary of key
                   #      value pairs. Each key is a chunk in that file and the value is the hex digest of that chunk
 
+
 def get_message_length(peer_socket):
     """
         Description - before peers send messages, they send the length of the message followed by a '#' sign. This loops through the
@@ -147,7 +148,7 @@ def record_file_data(message, peer_id):
 
 def handle_peer(conn, addr):
     """
-        Description - wait for messages from the peer. Determine the message's opcode, then call the corresponding function. This
+        Description - Wait for messages from the peer. Determine the message's opcode, then call the corresponding function. This
                       continues to run until the peer disconnects or the server shuts down.
 
         Inputs
@@ -286,7 +287,7 @@ def record_chunk_hash(message):
 def send_chunk2(conn, chunk_set, chunk_num):
     """
         Description:
-            Randomely picks a peer who has the desired chunk (chunk_num) and sends that peer's contact info as well as the
+            Randomly picks a peer who has the desired chunk (chunk_num) and sends that peer's contact info as well as the
             chunk number to the requester.
 
         inputs:
@@ -320,7 +321,7 @@ def find_rarest_chunk(file_name, needed_chunks, queued_chunks):
         Inputs
                 file_name - the name of the file that is being downloaded (string)
             needed_chunks - the chunks that still have to be downloaded by the peer (set)
-            queued_chunks - 
+            queued_chunks - the chunks that are currently being downloaded by the peer (set)
     """
 
     #print(f'FIND_RAREST_CHUNK:\nneeded_chunks: {needed_chunks}\nqueued_chunks: {queued_chunks}\n')
@@ -337,12 +338,11 @@ def find_rarest_chunk(file_name, needed_chunks, queued_chunks):
     return None
 
 
-
 def send_file(conn, requester_id, file_name):
     """
-        Initialize a set of the chunks that the requester needs to download.
-        Loop through that set to send chunks to the requester until there are no more chunks left for the requester to download
-        Continuously track which chunks the requester has and update file_holders so other peers can download from them
+        Initialize a set of the chunks that the requester needs to download. Loop through that set finding the rarest chunk and sends
+        it to the requester until there are no more chunks left for the requester to download. Continuously tracks which chunks the
+        requester has and update file_holders so other peers can download from them.
 
     """
 
@@ -411,8 +411,8 @@ def send_file(conn, requester_id, file_name):
     conn.send(message.encode('utf-8'))
 
 
-# Close the peer connection
 def close_server(conn):
+    # Close the peer connection
     conn.close()
 
 
