@@ -8,10 +8,19 @@ HOST = '127.0.0.1'
 PORT = 12345
 
 def start_server():
+    """
+        Description - run the server as a subprocess.
+    
+    """
     server_process = subprocess.Popen(['python3', 'server.py'])
     return server_process
 
 def stop_server(server_process):
+    """
+        Description - gracefully terminate the server instance that is passed in. Forcefully kill the server if it does not terminate
+                      within 5 seconds.
+    """
+
     print("  demo.py: Stopping server...")
     server_process.terminate()  # Gracefully terminate the server
     try:
@@ -23,6 +32,12 @@ def stop_server(server_process):
         print("  demo.py: Server killed.")
     
 def create_new_peer(peer_id, host, port, files_dir, malicious = False):
+    """
+        Description - create a new Peer instance and run it as a daemon thread. Then create the peer's server socket and connect
+                      to the server.
+
+    """
+
     new_peer = Peer(peer_id=peer_id, host=host, port=port, files_dir=files_dir, malicious=malicious)
     new_peer.create_server_socket()
     new_peer.connect_to_server()
@@ -34,21 +49,7 @@ def create_new_peer(peer_id, host, port, files_dir, malicious = False):
     return new_peer, new_peer_thread 
 
 
-def create_new_demo_peer(peer_id, host, port, malicious = False):
-    files_dir = input("Enter the directory of files that you want to share: ")
-    new_peer = DemoPeer(peer_id=peer_id, host=host, port=port, files_dir=files_dir, malicious=malicious)
-    new_peer.create_server_socket()
-    new_peer.connect_to_server()
-    time.sleep(1)
-    new_peer_thread = threading.Thread(target=peer_thread_function, args=(new_peer,))
-    new_peer_thread.daemon = True
-    new_peer_thread.start()
-    time.sleep(2)
-    return new_peer, new_peer_thread 
-
-
-
-def test_upload_file_data():
+def start_demo():
     peer1_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files1'
 
     server_process = start_server()
@@ -59,7 +60,7 @@ def test_upload_file_data():
     print("  demo.py: Peer1 has connected to server")
     peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir, True)
     print("  demo.py: Peer2 has connected to server")
-    #peer3, peer3_thread = create_new_demo_peer(3, HOST, PORT)
+    #peer3, peer3_thread = create_new_peer(3, HOST, PORT)
     #print("  demo.py: Peer3 has connected to server")
     peer4, peer4_thread = create_new_peer(4, HOST, PORT, '')
     print("  demo.py: Peer4 has connected to server")
@@ -102,7 +103,6 @@ def test_upload_file_data():
 
 
 if __name__ == '__main__':
-    #start_demo()
-    test_upload_file_data()
+    start_demo()
 
 

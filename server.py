@@ -31,6 +31,12 @@ chunk_hashes = {} # {file1_name: {chunk_1: 'hex_dig', chunk_2: 'hex_dig', ...}, 
                   #      value pairs. Each key is a chunk in that file and the value is the hex digest of that chunk
 
 def get_message_length(peer_socket):
+    """
+        Description - before peers send messages, they send the length of the message followed by a '#' sign. This loops through the
+                      data in the peer_socket one character at a time until the '#' sign is reached. The '#' is ignored, but everything
+                      before it will be form an integer that represents the length of the peer's message in bytes.
+    """
+
     cur_substring = ''
     while True:
         byte = peer_socket.recv(1).decode('utf-8')
@@ -44,6 +50,13 @@ def get_message_length(peer_socket):
 
 
 def get_peer_contact_info(message):
+    """
+        Description - when peers send messages to the server they include their contact information This is the peer's ID and the port
+                      number of the socket it uses to listen for request from other peers. These values are seperated by a '#' sign,
+                      so it iterates through the characters in the message to pull out the id and port number.
+        
+    """
+
     cur_substring = ''
     peer_id = None
     peer_port = None
@@ -74,6 +87,17 @@ def get_peer_contact_info(message):
 
 
 def record_file_data(message, peer_id):
+    """
+        Description - peers tell the server information about the files they want to share on the network. The information is stored
+                      in message and includes the file name and number of chunks in the file. The peer id is used so the server can
+                      pull up this peer's contact information in case another peer wants to request the chunk number from them.
+
+        Inputs
+            message - contains the file information formatted as file_name_length + '#' + file_name + '#' + num_chunks
+            peer_id - the ID the peer that has the file. This is used to access their listener port number in the peers dictionary
+
+    """
+
     i = 0
 
     # loop through the different files in the message
@@ -122,6 +146,16 @@ def record_file_data(message, peer_id):
     
 
 def handle_peer(conn, addr):
+    """
+        Description - wait for messages from the peer. Determine the message's opcode, then call the corresponding function. This
+                      continues to run until the peer disconnects or the server shuts down.
+
+        Inputs
+            conn - the socket that the server uses to communicate with the peer
+            addr - the ip and port number of the peer this thread is communicating with. This port number is an ephemoral port number,
+                   not the peer's listening port number. The listening port number is gotten from the peer when it connects.
+    """
+
     # Function to handle communication with a single peer
     #print(f"server.py: New connection from {addr}")
     peer_id = None
@@ -178,16 +212,28 @@ def handle_peer(conn, addr):
 
 
 def send_file_list(conn):
+    """
+        Description - when DemoPeer requests a list of files that it can download, this is used to iterate through the files on the
+                      network, determine if all the file's chunks are available, and then add that file's name to a message that is
+                      sent to the peer formatted as:
+                                    
+                                    file1_name + '#' + file2_name + '#' + file3_name + '#' ...
+    """
+
+    # iterate through files
     message = ''
     for file_name in file_holders:
         chunk_set = file_holders[file_name]
         file_complete = True
+
+        # make sure ach of the chunks has at least one peer on the netowrk
         for chunk in chunk_set:
             if chunk_set[chunk] == None:
                 file_complete = False
         if file_complete:
             message += file_name+'#'
     
+    # send the file names to the peer
     message = message.encode('utf-8')
     message_length = str(len(message)) + '#'
     conn.send(message_length.encode('utf-8'))
@@ -196,15 +242,16 @@ def send_file_list(conn):
 
 def send_chunk_hash(message, conn):
     """ 
-        When the peer needs to verify the integrity of the data it receives, it asks for the original chunk hash. These are stored in the chunk_hashes dictionary
-        and are initialized when a peer first uploads a file.
+        Description - When the peer needs to verify the integrity of the data it receives, it asks for the original chunk hash. 
+                      These are stored in the chunk_hashes dictionary and are initialized when a peer first uploads a file.
 
         Inputs:
-            message - formated as file_name # chunk_num
-                      where file_name and chunk_num are the name of the file and the chunk number in that file that the peer wants the hash for.
-            conn    - the server's connection to the peer. This is used to send the hash back to the peer
+            message - formated as file_name + '#' + chunk_num, where file_name and chunk_num are the name of the file and the 
+                      chunk number in that file that the peer wants the hash for.
+               conn - the server's connection to the peer. This is used to send the hash back to the peer
 
     """
+
     #print(f"\nserver.py: send_chunk_hash message: {message}\n")
     message_parts = message.split('#')
     file_name = message_parts[0]
@@ -219,6 +266,14 @@ def send_chunk_hash(message, conn):
 
 
 def record_chunk_hash(message):
+    """
+        Description - peers tell the server the hash digests of the chunks for files they are sharing. They do so by sending messages
+                      formatted as file_name + '#' + chunk_num + '#' + chunk_hash. This splits the message on the '#' sign to extract
+                      the hash as well as its corresponding chunk then stores that information in the chunk_hashes dictionary.
+
+        Inputs
+            message - this is the message sent by the peer (string)
+    """
     message_parts = message.split('#')
     file_name = message_parts[0]
     chunk_num = int(message_parts[1])
@@ -230,15 +285,15 @@ def record_chunk_hash(message):
 
 def send_chunk2(conn, chunk_set, chunk_num):
     """
+        Description:
+            Randomely picks a peer who has the desired chunk (chunk_num) and sends that peer's contact info as well as the
+            chunk number to the requester.
+
         inputs:
                  conn - the socket between the server and the peer requesting a file
             requester - the id of the peer requesting the file
             chunk_set - the set of chunks with the ids of peers who have each chunk
             chunk_num - the chunk within chunk_set that needs to be sent to the requester
-        
-        Description:
-            Randomly picks a peer who has the desired chunk (chunk_num) and sends that peer's contact info as well as the
-            chunk number to the requester.
 
     """
 
@@ -258,6 +313,15 @@ def send_chunk2(conn, chunk_set, chunk_num):
 
 
 def find_rarest_chunk(file_name, needed_chunks, queued_chunks):
+    """
+        Description - search through the chunks that the peer still needs to download and select the one that has the fewest copies
+                      on the network (the chunk whose set of peers that have the chunk is the smallest).
+
+        Inputs
+                file_name - the name of the file that is being downloaded (string)
+            needed_chunks - the chunks that still have to be downloaded by the peer (set)
+            queued_chunks - 
+    """
 
     #print(f'FIND_RAREST_CHUNK:\nneeded_chunks: {needed_chunks}\nqueued_chunks: {queued_chunks}\n')
     chunk_set = file_holders[file_name]
@@ -354,6 +418,10 @@ def close_server(conn):
 
 # Server setup to handle multiple peers
 def start_server():
+    """
+        Description - create the socket that peers connect to. When peers do connect, a thread is created to run handle_peer for that
+                      peer until it disconnects. This will continue to accept new connections from peers until the server terminates.
+    """
     host = '127.0.0.1'  # Localhost
     port = 12345        # Non-privileged port
 
