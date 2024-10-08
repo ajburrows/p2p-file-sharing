@@ -37,6 +37,7 @@ class Peer:
                            host - the ip address of the central server (string)
                            port - the port number of the central server (int)
                       files_dir - the root files path of the directory containing the files that this peer will share
+                      malicious - if true, the peer will modify data when it sends chunks to other peers
             
             Variables:
                         peer_id - an integer used to identify the peer and help with debugging (int)
@@ -49,7 +50,8 @@ class Peer:
                       file_data - this is where the data being downloaded from other peers is stored
                           files - a dictionary that stores the files as chunks
                     req_threads - a list of the threads that are used to request chunks from other peers
-                      malicious - a boolean where if True, this peer will intentionally modify data to give incorrect chunks that should be discarded by peers 
+                      malicious - a boolean where if True, this peer will intentionally modify data to give incorrect chunks that
+                                  should be discarded by peers
 
         """
 
@@ -312,22 +314,6 @@ class Peer:
         #print(f"  peer.py: Peer {self.peer_id} connected to server at {self.host}:{self.port}")
 
 
-    def verify_data(self, data):
-        """
-            Description:
-                Returns True if the data passed in is valid and not corrupt
-                Returns False otherwise
-            
-            Input:
-                data - the data that needs to be validated
-            
-        """
-
-        if data == '<server_data_here>':
-            return True
-        return False
-
-
     def make_message_header(self, opcode):
         """
             Every message sent to the server should have a header containing:
@@ -341,6 +327,11 @@ class Peer:
 
 
     def connect_to_peer(self, peer_ip, peer_port):
+        """
+            Description - create a socket to communicate with the peer whose information is passed in. If the connection is successful, the socket is returned.
+        
+        """
+
         peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
         try:
@@ -563,10 +554,6 @@ class Peer:
         #print(f"  peer.py: Peer{self.peer_id} sockets closed.")
 
 
-    def run_in_background(self):
-        self.start_listening()
-
-
 def peer_thread_function(peer): 
-    peer.run_in_background()
+    peer.start_listening()
 
