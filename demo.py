@@ -51,6 +51,7 @@ def create_new_peer(peer_id, host, port, files_dir, malicious = False):
 
 def start_demo():
     peer1_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files1'
+    
 
     server_process = start_server()
     time.sleep(3)
@@ -60,9 +61,9 @@ def start_demo():
     print("  demo.py: Peer1 has connected to server")
     peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir, True)
     print("  demo.py: Peer2 has connected to server")
-    peer3, peer3_thread = create_new_peer(3, HOST, PORT, '')
+    peer3, peer3_thread = create_new_peer(3, HOST, PORT, '/home/ajburrows/projects/p2p-file-sharing-lab1/files3')
     print("  demo.py: Peer3 has connected to server")
-    peer4, peer4_thread = create_new_peer(4, HOST, PORT, '')
+    peer4, peer4_thread = create_new_peer(4, HOST, PORT, '/home/ajburrows/projects/p2p-file-sharing-lab1/files4')
     print("  demo.py: Peer4 has connected to server")
     print('\n  demo.py: created peers')
 
@@ -76,17 +77,18 @@ def start_demo():
 
     print('\n  demo.py: data uploaded')
 
-    print('\n  demo.py: PEER3 ATTEMPTING DOWNLOAD')
+    time.sleep(5)
+    print('\n  demo.py: Peer 3 will download in 5 seconds')
+    time.sleep(5)
+    print('\n  demo.py: Peer3 attempting to download f1_dir1.txt')
     peer3.download_file_thread('f1_dir1.txt')
-    #print('\n  demo.py: Peer4 will download in 10 seconds')
-    #time.sleep(10)
     print('\n  demo.py: PEER4 ATTEMPTING DOWNLOAD')
     peer4.download_file_thread('f1_dir1.txt')
     print()
 
 
     time.sleep(10)
-    print('  demo.py: PEERS CLOSING')
+    print('  demo.py: Peers closing')
     peer1.close_peer()
     peer2.close_peer()
     peer3.close_peer()

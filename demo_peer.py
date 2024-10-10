@@ -544,6 +544,19 @@ class DemoPeer:
         #print(f'\n peer self.files: {self.files}')
 
 
+        self.write_file_from_chunks(file_name)
+
+
+    def write_file_from_chunks(self, file_name):
+        chunk_dict = self.files[file_name]
+        output_file_path = self.files_dir + '/' + file_name
+        with open(output_file_path, 'w') as output_file:
+            for chunk_number in sorted(chunk_dict.keys()):
+                # Write each chunk's data to the file
+                output_file.write(chunk_dict[chunk_number])
+        print(f'  peer.py: Peer{self.peer_id} has downloaded {file_name} to {output_file_path}')
+
+
     def close_peer(self):
         """
             Description:
@@ -591,6 +604,7 @@ class DemoPeer:
         for i in range(len(file_names)):
             print(f'{i}:  {file_names[i]}')
 
+
 def demo_peer_thread_function(peer): 
     """
         Commands:
@@ -626,7 +640,7 @@ def demo_peer_thread_function(peer):
 
 if __name__ == '__main__':
     #start_demo()
-    demo_peer = DemoPeer(3, '127.0.0.1', 12345, '', False, True)
+    demo_peer = DemoPeer(5, '127.0.0.1', 12345, '/home/ajburrows/projects/p2p-file-sharing-lab1/files5', False, True)
     demo_peer.create_server_socket()
     demo_peer_thread_function(demo_peer)
 

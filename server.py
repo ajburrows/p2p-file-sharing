@@ -177,7 +177,7 @@ def handle_peer(conn, addr):
                     for chunk_num in file_holders[file_name]:
                         if peer_id in file_holders[file_name][chunk_num]:
                             file_holders[file_name][chunk_num].remove(peer_id)
-                print(f'server.py: Peer{peer_id} removed from file_holders: {file_holders}')
+                #print(f'server.py: Peer{peer_id} removed from file_holders: {file_holders}')
             else:
                 print(f"Null message recieved from unknown peer")
             break
@@ -404,7 +404,7 @@ def send_file(conn, requester_id, file_name):
             queued_chunks.remove(chunk_num)
 
     #print("\n\nEXITING SEND FILE\n\n")
-    print(f'TESTING: files {file_holders}')
+    #print(f'TESTING: files {file_holders}')
 
     #send message to tell peer download is complete
     message = '1#' + OPCODE_DOWNLOAD_COMPLETE

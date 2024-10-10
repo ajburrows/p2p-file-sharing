@@ -84,7 +84,7 @@ class Peer:
         self.listener_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.listener_socket.bind((self.host, self.port + self.peer_id))
         self.listener_socket.listen(5)
-        self.listener_socket.settimeout(3.0)
+        self.listener_socket.settimeout(5.0)
         #print(f'  peer.py: Peer{self.peer_id} listening on port {self.port + self.peer_id}')
 
         handler_threads = [] # stores threads created to handle other peers
@@ -280,7 +280,7 @@ class Peer:
         #print(f'  peer.py: files - {self.files}')
         
 
-    def file_to_chunks(self, file_path, chunk_size):
+    def file_to_chunks(self, directory_path, chunk_size):
         """
             inputs:
                 file_path - root path of the directory containing files for this peer to upload.
@@ -293,7 +293,7 @@ class Peer:
 
         chunk_dict = {}
         i = 0
-        with open(file_path, 'r') as file:
+        with open(directory_path, 'r') as file:
             while i >= 0:
                 chunk = file.read(chunk_size)
                 if not chunk:
@@ -392,7 +392,7 @@ class Peer:
                         print(f'  peer.py: Peer{self.peer_id} received chunk ({chunk_num})\n')#n          Peer{self.peer_id}.files: {self.files}\n')
                     
                     else:
-                        print(f'  peer.py: discarding chunk ({chunk_num}) - hashes mismatched')
+                        print(f'  peer.py: Peer{self.peer_id} discarding chunk ({chunk_num}) - hashes mismatched')
                         server_message = OPCODE_FAILURE + '#' + peer_ip + ':' + str(peer_port) + '#' + str(chunk_num)
                         server_message = server_message.encode('utf-8')
                         server_message_length = str(len(server_message)) + '#'
@@ -531,6 +531,20 @@ class Peer:
             thread.join()
         #print(f'\n  peer.py: THREADS JOINED\n')
         #print(f'\n peer self.files: {self.files}')
+
+
+        self.write_file_from_chunks(file_name)
+
+
+    def write_file_from_chunks(self, file_name):
+        chunk_dict = self.files[file_name]
+        output_file_path = self.files_dir + '/' + file_name
+        with open(output_file_path, 'w') as output_file:
+            for chunk_number in sorted(chunk_dict.keys()):
+                # Write each chunk's data to the file
+                output_file.write(chunk_dict[chunk_number])
+        print(f'  peer.py: Peer{self.peer_id} has downloaded {file_name} to {output_file_path}')
+
 
 
     def close_peer(self):
