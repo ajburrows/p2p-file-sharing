@@ -2,7 +2,7 @@ import socket
 import threading
 import random
 import time
-
+from pymongo import MongoClient
 
 DOWNLOAD_QUEUE_LEN = 3
 
@@ -18,7 +18,7 @@ OPCODE_REQUEST_FILE_LIST = 'b'
 
 requested_data = '<server_data_here>'
 peers = {} # {peer_id:(server_addr, listening_addr)} --> addr stored as (ip_addr, port_number)
-data_holders = {} # {data_hash:(peer_id1, peer_id2, peer_id3, ...)} --> peer IDs stored in set
+#data_holders = {} # {data_hash:(peer_id1, peer_id2, peer_id3, ...)} --> peer IDs stored in set
 
 file_holders = {} # {file1_name: {chunk_1: (peer_id1, peer_id2, ...), chunk_2: (peer_id1, peer_id2, ...)}, file2_name: {...}, ...}
                   # ^--> dictionary of file names. Within each file there is another dictionary containing the chunk and a set of
@@ -29,6 +29,14 @@ file_holders = {} # {file1_name: {chunk_1: (peer_id1, peer_id2, ...), chunk_2: (
 chunk_hashes = {} # {file1_name: {chunk_1: 'hex_dig', chunk_2: 'hex_dig', ...}, file2_name: {...}, ...}
                   # ^--> dictionary of the file names (strings) as the first key layer. Under the filename is a dictionary of key
                   #      value pairs. Each key is a chunk in that file and the value is the hex digest of that chunk
+
+
+# Connect to the local MongoDB server (or specify the MongoDB URI for remote servers)
+client = MongoClient("mongodb://localhost:27017")
+db = client.p2p_file_sharing
+peers_collection = db.peers
+file_holders_collection = db.file_holders
+chunk_hashes_collection = db.chunk_hashes
 
 
 def get_message_length(peer_socket):
@@ -414,6 +422,94 @@ def send_file(conn, requester_id, file_name):
 def close_server(conn):
     # Close the peer connection
     conn.close()
+
+# Insert or update a peer (for when they connect)
+def upsert_peer(peer_id, server_addr, listening_addr):
+    """
+    Peer json structure
+    {
+        "peer_id": 1,
+        "server_addr": {"ip": "192.168.1.10", "port": 5000},
+        "listening_addr": {"ip": "192.168.1.10", "port": 6000}
+    }
+    """
+
+    peers_collection.update_one(
+        {"peer_id": peer_id},
+        {"$set": {"server_addr": server_addr, "listening_addr": listening_addr}},
+        upsert=True
+    )
+
+
+# Retrieve a peer (for finding its contact info)
+def get_peer(peer_id):
+    return peers_collection.find_one({"peer_id": peer_id})
+
+
+# Delete peer (for when they disconnect)
+def delete_peer(peer_id):
+    peers_collection.delete_one({"peer_id": peer_id})
+
+
+# Insert or update file chunk holders
+def upsert_file_chunk(file_name, chunk, peer_id):
+    """
+    file_chunk json
+    {
+        "file_name": "file1",
+        "chunks": {
+            "1": ["peer_id1", "peer_id2"],
+            "2": ["peer_id1"]
+        }
+    }
+
+    """
+    file_holders_collection.update_one(
+        {"file_name": file_name},
+        {"$addToSet": {f"chunks.{chunk}": peer_id}},  # $addToSet prevents duplicate entries
+        upsert=True
+    )
+
+
+# Retrieve file information
+def get_file_chunks(file_name):
+    return file_holders_collection.find_one({"file_name": file_name})
+
+
+# Remove a peer from a chunk (e.g., if a peer goes offline)
+def remove_peer_from_chunk(file_name, chunk, peer_id):
+    file_holders_collection.update_one(
+        {"file_name": file_name},
+        {"$pull": {f"chunks.{chunk}": peer_id}}
+    )
+
+
+# Insert or update chunk hash
+def upsert_chunk_hash(file_name, chunk, hex_digest):
+    """
+    json format
+    {
+        "file_name": "file1",
+        "hashes": {
+            "1": "hex_digest_1",
+            "2": "hex_digest_2"
+        }
+    }
+    """
+
+    chunk_hashes_collection.update_one(
+        {"file_name": file_name},
+        {"$set": {f"hashes.{chunk}": hex_digest}},
+        upsert=True
+    )
+
+# Retrieve chunk hashes for a file
+def get_chunk_hashes(file_name):
+    return chunk_hashes_collection.find_one({"file_name": file_name})
+
+# Delete hashes for a file if needed
+def delete_chunk_hashes(file_name):
+    chunk_hashes_collection.delete_one({"file_name": file_name})
 
 
 # Server setup to handle multiple peers

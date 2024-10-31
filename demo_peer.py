@@ -602,7 +602,8 @@ class DemoPeer:
 
         file_names = file_data.split('#')
         for i in range(len(file_names)):
-            print(f'{i}:  {file_names[i]}')
+            if file_names[i] != '':
+                print(f'{i}:  {file_names[i]}')
 
 
 def demo_peer_thread_function(peer): 

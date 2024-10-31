@@ -51,6 +51,7 @@ def create_new_peer(peer_id, host, port, files_dir, malicious = False):
 
 def start_demo():
     peer1_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files1'
+    peer2_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files2'
     
 
     server_process = start_server()
@@ -59,7 +60,7 @@ def start_demo():
 
     peer1, peer1_thread = create_new_peer(1, HOST, PORT, peer1_files_dir)
     print("  demo.py: Peer1 has connected to server")
-    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer1_files_dir, True)
+    peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer2_files_dir, True)
     print("  demo.py: Peer2 has connected to server")
     peer3, peer3_thread = create_new_peer(3, HOST, PORT, '/home/ajburrows/projects/p2p-file-sharing-lab1/files3')
     print("  demo.py: Peer3 has connected to server")
