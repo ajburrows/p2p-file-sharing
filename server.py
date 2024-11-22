@@ -397,13 +397,13 @@ def send_file(conn, requester_id, file_name):
     conn.send(message.encode('utf-8'))
 
 
-# Close the peer connection
 def close_server(conn):
+    # Close the peer connection
     conn.close()
 
 
-# Insert or update a peer (for when they connect)
 def upsert_peer(peer_id, server_addr, listening_addr):
+    # Insert or update a peer (for when they connect)
     """
     Peer json structure
     {
@@ -420,18 +420,18 @@ def upsert_peer(peer_id, server_addr, listening_addr):
     )
 
 
-# Retrieve a peer (for finding its contact info)
 def get_peer(peer_id):
+    # Retrieve a peer (for finding its contact info)
     return peers_collection.find_one({"peer_id": peer_id})
 
 
-# Delete peer (for when they disconnect)
 def delete_peer(peer_id):
+    # Delete peer (for when they disconnect)
     peers_collection.delete_one({"peer_id": peer_id})
 
 
-# Insert or update file chunk holders
 def upsert_file_chunk(file_name, chunk, peer_id):
+    # Insert or update file chunk holders
     """
     file_chunk json
     {
@@ -450,21 +450,21 @@ def upsert_file_chunk(file_name, chunk, peer_id):
     )
 
 
-# Retrieve file information
 def get_file_chunks(file_name):
+    # Retrieve file information
     return file_holders_collection.find_one({"file_name": file_name})
 
 
-# Remove a peer from a chunk (e.g., if a peer goes offline)
 def remove_peer_from_chunk(file_name, chunk, peer_id):
+    # Remove a peer from a chunk (e.g., if a peer goes offline)
     file_holders_collection.update_one(
         {"file_name": file_name},
         {"$pull": {f"chunks.{chunk}": peer_id}}
     )
 
 
-# Insert or update chunk hash
 def upsert_chunk_hash(file_name, chunk, hex_digest):
+    # Insert or update chunk hash
     """
     json format of chunk hashes
     {
@@ -484,13 +484,13 @@ def upsert_chunk_hash(file_name, chunk, hex_digest):
     )
 
 
-# Retrieve chunk hashes for a file
 def get_chunk_hashes(file_name):
+    # Retrieve chunk hashes for a file
     return chunk_hashes_collection.find_one({"file_name": file_name})
 
 
-# Delete hashes for a file if needed
 def delete_chunk_hashes(file_name):
+    # Delete hashes for a file if needed
     chunk_hashes_collection.delete_one({"file_name": file_name})
 
 
