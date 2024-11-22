@@ -166,7 +166,6 @@ def handle_peer(conn, addr):
     """
 
     # Function to handle communication with a single peer
-    #print(f"server.py: New connection from {addr}")
     peer_id = None
     while True:
         message_length = get_message_length(conn)
@@ -192,13 +191,10 @@ def handle_peer(conn, addr):
 
 
         peer_id, peer_listening_port, message = get_peer_contact_info(message[1:])
-        #print(f'\nserver.py: TESTING MESSAGE\n           peerID: {peer_id}\n           portNum: {peer_listening_port}\n           message: {message}\n')
         if peer_id not in peers:
             peers[peer_id] = (addr, (addr[0], peer_listening_port))
-            #print(f'server.py: start handle_peer, peers: {peers}')
     
         if operation == OPCODE_REQ_CHUNK_HASH:
-            #print(f"server.py: sending chunk hash: {message}")
             send_chunk_hash(message, conn)
 
         # Peer is telling the server what files it is willing to share
@@ -217,7 +213,6 @@ def handle_peer(conn, addr):
 
 
     conn.close()
-    #print(f'server.py: end of handle_peer, peers: {peers}')
 
 
 def send_file_list(conn):
@@ -227,15 +222,17 @@ def send_file_list(conn):
                       sent to the peer formatted as:
                                     
                                     file1_name + '#' + file2_name + '#' + file3_name + '#' ...
+        
+        Inputs
+            conn - the socket connecting the the server and the peer who needs the list
     """
 
-    # iterate through files
     message = ''
     for file_name in file_holders:
         chunk_set = file_holders[file_name]
         file_complete = True
 
-        # make sure ach of the chunks has at least one peer on the netowrk
+        # make sure each of the chunks has at least one peer on the netowrk
         for chunk in chunk_set:
             if chunk_set[chunk] == None:
                 file_complete = False
@@ -261,17 +258,17 @@ def send_chunk_hash(message, conn):
 
     """
 
-    #print(f"\nserver.py: send_chunk_hash message: {message}\n")
+    # get the chunk hash
     message_parts = message.split('#')
     file_name = message_parts[0]
     chunk_num = int(message_parts[1])
     chunk_hash = chunk_hashes[file_name][chunk_num]
+
+    # send the chunk_hash and tell the peer how many bytes the message is
     chunk_hash = chunk_hash.encode('utf-8')
     message_length = str(len(chunk_hash)) + '#'
     conn.send(message_length.encode('utf-8'))
-    #print(f'server.py: sent message_length: {message_length}')
     conn.send(chunk_hash)
-    #print(f'server.py: sent chunk_hash: {chunk_hash}')
 
 
 def record_chunk_hash(message):
@@ -283,7 +280,7 @@ def record_chunk_hash(message):
         Inputs
             message - this is the message sent by the peer (string)
     """
-
+    
     message_parts = message.split('#')
     file_name = message_parts[0]
     chunk_num = int(message_parts[1])
