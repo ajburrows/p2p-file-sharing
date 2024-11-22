@@ -332,14 +332,15 @@ def find_rarest_chunk(file_name, needed_chunks, queued_chunks):
             queued_chunks - the chunks that are currently being downloaded by the peer (set)
     """
 
-    #print(f'FIND_RAREST_CHUNK:\nneeded_chunks: {needed_chunks}\nqueued_chunks: {queued_chunks}\n')
     chunk_set = file_holders[file_name]
     rarest = None
     for chunk_num in needed_chunks:
-        if not rarest and chunk_num not in queued_chunks:
-            rarest = [chunk_num, len(chunk_set[chunk_num])]
-        elif rarest and len(chunk_set[chunk_num]) < rarest[1] and chunk_num not in queued_chunks:
-            rarest = [chunk_num, len(chunk_set[chunk_num])]
+        if chunk_num in queued_chunks:
+            continue
+        
+        chunk_count = len(chunk_set[chunk_num])
+        if rarest is None or chunk_count < rarest[1]:
+            rarest = [chunk_num, chunk_count]
     
     if rarest:
         return rarest[0]
@@ -348,10 +349,14 @@ def find_rarest_chunk(file_name, needed_chunks, queued_chunks):
 
 def send_file(conn, requester_id, file_name):
     """
-        Initialize a set of the chunks that the requester needs to download. Loop through that set finding the rarest chunk and sends
-        it to the requester until there are no more chunks left for the requester to download. Continuously tracks which chunks the
-        requester has and update file_holders so other peers can download from them.
-
+        Description -   Initialize a set of the chunks that the requester needs to download. Loop through that set finding the rarest 
+                        chunk and sends it to the requester until there are no more chunks left for the requester to download. 
+                        Continuously tracks which chunks the requester has and update file_holders so other peers can download from them.
+        
+        Inputs
+                    conn - socket connection with the peer downloading the file 
+            requester_id - the id of the peer downloading the file
+               file_name - the name of the file being downloaded
     """
 
     if file_name not in file_holders:
@@ -367,61 +372,52 @@ def send_file(conn, requester_id, file_name):
     num_chunks_message_length = str(len(num_chunks_message)) + '#'
     conn.send(num_chunks_message_length.encode('utf-8'))
     conn.send(num_chunks_message)
-    #print(f'server.py: Server sending num_chunks to Peer{requester_id}: {num_chunks_message}, len: {num_chunks_message_length}')
 
     while len(needed_chunks) > 0:
         chunk_num = find_rarest_chunk(file_name, needed_chunks, queued_chunks)
-        # only queue up a certain number of chunks at a time (the number is stored in DOWNLOAD_QUEUE_LEN)
+
         if chunk_num != None and len(queued_chunks) < DOWNLOAD_QUEUE_LEN and chunk_num not in queued_chunks:
             queued_chunks.add(chunk_num)
             send_chunk2(conn, chunk_set, chunk_num)
-            time.sleep(0.05) # give time for peer response to finish sending here
+
         else:
-            # download_result format: OPCODE + '#' + PEER_ADDR + '#' + CHUNK_NUM --> PEER_ADDR is the ADDR of the peer that sent the chunk
+            # download_result's format: OPCODE + '#' + PEER_ADDR + '#' + CHUNK_NUM
             peer_message_length = get_message_length(conn)
             download_result = conn.recv(peer_message_length).decode('utf-8')
-            #print(f'server.py: Server received message while waiting for chunks to download\n          message: {download_result}')
 
             if download_result[0] == OPCODE_CHUNK_DOWNLOAD_SUCCESS:
-                # get downloaded chunk number
-                downloaded_chunk = int(download_result.split('#')[2])
+                downloaded_chunk_num = int(download_result.split('#')[2])
 
                 # add this peer to the set of peers who have the chunk
-                file_holders[file_name][downloaded_chunk].add(requester_id)
+                file_holders[file_name][downloaded_chunk_num].add(requester_id)
 
                 # remove the chunk from the download queue
-                queued_chunks.remove(downloaded_chunk)
-                needed_chunks.remove(downloaded_chunk)
+                queued_chunks.remove(downloaded_chunk_num)
+                needed_chunks.remove(downloaded_chunk_num)
 
 
             elif download_result[0] == OPCODE_FAILURE:
-                #print(f'server.py: peer FAILED to donwload chunk')
-                downloaded_chunk = int(download_result.split('#')[2])
-                queued_chunks.remove(downloaded_chunk)
+                downloaded_chunk_num = int(download_result.split('#')[2])
+                queued_chunks.remove(downloaded_chunk_num)
 
-            # triggers if the OPCODE was neither 0 or 1
             else:
                 Exception('server.py: EXCEPTION invalid opcode from peer in send_file')
-        #print('TESTING: for loop finished')
-        outdated_queues = set()
+
+        # flush out repeated chunk downloads
         for chunk_num in queued_chunks:
             if requester_id in file_holders[file_name][chunk_num]:
-                outdated_queues.add(chunk_num)
-        
-        for chunk_num in outdated_queues:
-            queued_chunks.remove(chunk_num)
+                queued_chunks.remove(chunk_num)
 
-    #print("\n\nEXITING SEND FILE\n\n")
-    #print(f'TESTING: files {file_holders}')
 
-    #send message to tell peer download is complete
+    # Tell peer the download is complete
     message = '1#' + OPCODE_DOWNLOAD_COMPLETE
     conn.send(message.encode('utf-8'))
 
 
+# Close the peer connection
 def close_server(conn):
-    # Close the peer connection
     conn.close()
+
 
 # Insert or update a peer (for when they connect)
 def upsert_peer(peer_id, server_addr, listening_addr):
@@ -487,13 +483,14 @@ def remove_peer_from_chunk(file_name, chunk, peer_id):
 # Insert or update chunk hash
 def upsert_chunk_hash(file_name, chunk, hex_digest):
     """
-    json format
+    json format of chunk hashes
     {
         "file_name": "file1",
-        "hashes": {
-            "1": "hex_digest_1",
-            "2": "hex_digest_2"
-        }
+        "hashes": 
+            {
+                "1": "hex_digest_1",
+                "2": "hex_digest_2"
+            }
     }
     """
 
@@ -503,9 +500,11 @@ def upsert_chunk_hash(file_name, chunk, hex_digest):
         upsert=True
     )
 
+
 # Retrieve chunk hashes for a file
 def get_chunk_hashes(file_name):
     return chunk_hashes_collection.find_one({"file_name": file_name})
+
 
 # Delete hashes for a file if needed
 def delete_chunk_hashes(file_name):
@@ -531,11 +530,9 @@ def start_server():
     server_socket.listen()
     print(f"server.py: Server listening on {host}:{port}")
 
+    # create thrads to handle peers when they connect
     while True:
-        # Accept a new connection from a peer
         conn, addr = server_socket.accept()
-
-        # Start a new thread to handle the peer
         peer_thread = threading.Thread(target=handle_peer, args=(conn, addr))
         peer_thread.start()
 
