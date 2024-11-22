@@ -283,6 +283,7 @@ def record_chunk_hash(message):
         Inputs
             message - this is the message sent by the peer (string)
     """
+
     message_parts = message.split('#')
     file_name = message_parts[0]
     chunk_num = int(message_parts[1])
@@ -292,11 +293,10 @@ def record_chunk_hash(message):
         chunk_hashes[file_name][chunk_num] = chunk_hash
 
 
-def send_chunk2(conn, chunk_set, chunk_num):
+def send_chunk(conn, chunk_set, chunk_num):
     """
-        Description:
-            Randomly picks a peer who has the desired chunk (chunk_num) and sends that peer's contact info as well as the
-            chunk number to the requester.
+        Description - Randomly picks a peer who has the desired chunk (chunk_num) and sends that peer's contact info as well 
+                      as the chunk number to the requester.
 
         inputs:
                  conn - the socket between the server and the peer requesting a file
@@ -305,20 +305,18 @@ def send_chunk2(conn, chunk_set, chunk_num):
             chunk_num - the chunk within chunk_set that needs to be sent to the requester
 
     """
-
-    # Randomly choose a peer who has the chunk
     peer_id = random.choice(list(chunk_set[chunk_num]))
-    #print(f'TESTING: send_chunk choices: {chunk_set[chunk_num]}')
-
-    # Get that peer's contact info
     peer_ip_addr = peers[peer_id][1][0]
     peer_port_num = peers[peer_id][1][1]
+
+    # encode the chunk data
     message = str(chunk_num) + '#' + str(peer_ip_addr) + '#' + str(peer_port_num)
     message = message.encode('utf-8')
+
+    # tell the peer how many bytes the message is and send the message
     message_len = str(len(message)) + '#'
-    conn.send(message_len.encode('utf-8')) # tell the peer how many bytes it needs to read to capture the next message
+    conn.send(message_len.encode('utf-8'))
     conn.send(message)
-    #print(f'server.py: Server sending chunk-info to peer\n           message: {message}, length: {message_len}\n')
 
 
 def find_rarest_chunk(file_name, needed_chunks, queued_chunks):
@@ -378,7 +376,7 @@ def send_file(conn, requester_id, file_name):
 
         if chunk_num != None and len(queued_chunks) < DOWNLOAD_QUEUE_LEN and chunk_num not in queued_chunks:
             queued_chunks.add(chunk_num)
-            send_chunk2(conn, chunk_set, chunk_num)
+            send_chunk(conn, chunk_set, chunk_num)
 
         else:
             # download_result's format: OPCODE + '#' + PEER_ADDR + '#' + CHUNK_NUM
