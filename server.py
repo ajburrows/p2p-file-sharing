@@ -1,13 +1,12 @@
 import socket
 import threading
 import random
-import time
 from pymongo import MongoClient
 
 DOWNLOAD_QUEUE_LEN = 3
 
-OPCODE_RECORD_FILE_DATA = '3' # Received by peers when they connect and tell the server what files they want to share
-OPCODE_FILE_REQUEST_FROM_PEER = '4' # Received when a peer is requesting to download a file
+OPCODE_RECORD_FILE_DATA = '3'
+OPCODE_FILE_REQUEST_FROM_PEER = '4'
 OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 OPCODE_FAILURE = '6'
 OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
@@ -52,6 +51,7 @@ def get_message_length(peer_socket):
         if byte == '#':
             break
         cur_substring += byte
+
     if cur_substring:
         return int(cur_substring)
     else:
@@ -192,20 +192,13 @@ def handle_peer(conn, addr):
         peer_id, peer_listening_port, message = get_peer_contact_info(message[1:])
         if peer_id not in peers:
             peers[peer_id] = (addr, (addr[0], peer_listening_port))
-    
-        match int(operation):
-            case int(OPCODE_REQ_CHUNK_HASH):
-                send_chunk_hash(message, conn)
-            case int(OPCODE_RECORD_FILE_DATA):
-                record_file_data(message, peer_id)
-            case int(OPCODE_SEND_CHUNK_HASH_TO_SERVER):
-                record_chunk_hash(message)
-            case int(OPCODE_FILE_REQUEST_FROM_PEER):
-                send_file(conn, peer_id, message)
-            case int(OPCODE_REQUEST_FILE_LIST):
-                send_file_list(conn)
-            case _:
-                print(f'Unsupported operation: {operation}')
+
+        if operation == OPCODE_REQ_CHUNK_HASH: send_chunk_hash(message, conn)
+        elif operation == OPCODE_RECORD_FILE_DATA: record_file_data(message, peer_id)
+        elif operation == OPCODE_SEND_CHUNK_HASH_TO_SERVER: record_chunk_hash(message)
+        elif operation == OPCODE_FILE_REQUEST_FROM_PEER: send_file(conn, peer_id, message)
+        elif operation == OPCODE_REQUEST_FILE_LIST: send_file_list(conn)
+        else: print(f'Unsupported operation: {operation}')
 
     conn.close()
 
