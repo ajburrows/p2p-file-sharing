@@ -154,6 +154,14 @@ def record_file_data(message, peer_id):
     #print(f'server.py: File data recorded from Peer{peer_id}\n           file_holders: {file_holders}')
     
 
+def delete_peer_from_records(peer_id):
+    del peers[peer_id]
+    for file_name in file_holders:
+        for chunk_num in file_holders[file_name]:
+            if peer_id in file_holders[file_name][chunk_num]:
+                file_holders[file_name][chunk_num].remove(peer_id)
+    
+
 def handle_peer(conn, addr):
     """
         Description - Wait for messages from the peer. Determine the message's opcode, then call the corresponding function. This
@@ -165,52 +173,39 @@ def handle_peer(conn, addr):
                    not the peer's listening port number. The listening port number is gotten from the peer when it connects.
     """
 
-    # Function to handle communication with a single peer
     peer_id = None
     while True:
         message_length = get_message_length(conn)
         message = conn.recv(message_length).decode('utf-8')
         operation = message[0]
 
-        #print(f"server.py: hand_peer received message: {message}")
-
-        # Close the server if the message is NULL (empty)
+        # Close the server if the message is NULL (empty) and remove peer from records
         if operation == OPCODE_CLOSING_CONNECTION_TO_SERVER:
-            #print('\nBLUEBERRY\n')
             if peer_id in peers:
                 print(f"server.py: Peer{peer_id} disconnected.")
-                del peers[peer_id]
-                for file_name in file_holders:
-                    for chunk_num in file_holders[file_name]:
-                        if peer_id in file_holders[file_name][chunk_num]:
-                            file_holders[file_name][chunk_num].remove(peer_id)
-                #print(f'server.py: Peer{peer_id} removed from file_holders: {file_holders}')
+                delete_peer_from_records(peer_id)
             else:
                 print(f"Null message recieved from unknown peer")
             break
 
-
+        # Get the OPCODE from the peer's message and call the right function
         peer_id, peer_listening_port, message = get_peer_contact_info(message[1:])
         if peer_id not in peers:
             peers[peer_id] = (addr, (addr[0], peer_listening_port))
     
-        if operation == OPCODE_REQ_CHUNK_HASH:
-            send_chunk_hash(message, conn)
-
-        # Peer is telling the server what files it is willing to share
-        elif operation == OPCODE_RECORD_FILE_DATA:
-            record_file_data(message, peer_id)
-
-        elif operation == OPCODE_SEND_CHUNK_HASH_TO_SERVER:
-            record_chunk_hash(message)
-
-        # Peer is telling the server what file it wants to download
-        elif operation == OPCODE_FILE_REQUEST_FROM_PEER:
-            send_file(conn, peer_id, message)
-        
-        elif operation == OPCODE_REQUEST_FILE_LIST:
-            send_file_list(conn)
-
+        match int(operation):
+            case int(OPCODE_REQ_CHUNK_HASH):
+                send_chunk_hash(message, conn)
+            case int(OPCODE_RECORD_FILE_DATA):
+                record_file_data(message, peer_id)
+            case int(OPCODE_SEND_CHUNK_HASH_TO_SERVER):
+                record_chunk_hash(message)
+            case int(OPCODE_FILE_REQUEST_FROM_PEER):
+                send_file(conn, peer_id, message)
+            case int(OPCODE_REQUEST_FILE_LIST):
+                send_file_list(conn)
+            case _:
+                print(f'Unsupported operation: {operation}')
 
     conn.close()
 
