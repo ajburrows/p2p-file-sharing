@@ -10,7 +10,6 @@ PORT = 12345
 def start_server():
     """
         Description - run the server as a subprocess.
-    
     """
     server_process = subprocess.Popen(['python3', 'server.py'])
     return server_process
@@ -22,20 +21,22 @@ def stop_server(server_process):
     """
 
     print("  demo.py: Stopping server...")
-    server_process.terminate()  # Gracefully terminate the server
+    server_process.terminate()
     try:
-        server_process.wait(timeout=5)  # Wait for up to 5 seconds for the server to stop
+        server_process.wait(timeout=5) 
         print("  demo.py: Server terminated gracefully.")
+
+    # Forcefully kill the server if it does not terminate
     except subprocess.TimeoutExpired:
         print("  demo.py: Server did not stop, killing it forcefully.")
-        server_process.kill()  # Forcefully kill the server if it does not terminate
+        server_process.kill()  
         print("  demo.py: Server killed.")
     
+
 def create_new_peer(peer_id, host, port, files_dir, malicious = False):
     """
         Description - create a new Peer instance and run it as a daemon thread. Then create the peer's server socket and connect
                       to the server.
-
     """
 
     new_peer = Peer(peer_id=peer_id, host=host, port=port, files_dir=files_dir, malicious=malicious)
@@ -52,21 +53,19 @@ def create_new_peer(peer_id, host, port, files_dir, malicious = False):
 def start_demo():
     peer1_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files1'
     peer2_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files2'
+    peer3_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files3'
+    peer4_files_dir = '/home/ajburrows/projects/p2p-file-sharing-lab1/files4'
     
 
     server_process = start_server()
     time.sleep(3)
-    print()
 
+    print('  demo.py: creating peers')
     peer1, peer1_thread = create_new_peer(1, HOST, PORT, peer1_files_dir)
-    print("  demo.py: Peer1 has connected to server")
     peer2, peer2_thread = create_new_peer(2, HOST, PORT, peer2_files_dir, True)
-    print("  demo.py: Peer2 has connected to server")
-    peer3, peer3_thread = create_new_peer(3, HOST, PORT, '/home/ajburrows/projects/p2p-file-sharing-lab1/files3')
-    print("  demo.py: Peer3 has connected to server")
-    peer4, peer4_thread = create_new_peer(4, HOST, PORT, '/home/ajburrows/projects/p2p-file-sharing-lab1/files4')
-    print("  demo.py: Peer4 has connected to server")
-    print('\n  demo.py: created peers')
+    peer3, peer3_thread = create_new_peer(3, HOST, PORT, peer3_files_dir)
+    peer4, peer4_thread = create_new_peer(4, HOST, PORT, peer4_files_dir)
+    print('  demo.py: created peers')
 
     peer1.initialize_files()
     peer1.upload_file_data()
@@ -75,27 +74,25 @@ def start_demo():
     peer2.initialize_files()
     peer2.upload_file_data()
     peer2.upload_chunk_hashes()
+    print('  demo.py: data uploaded')
+    time.sleep(2)
 
-    print('\n  demo.py: data uploaded')
-
-    time.sleep(5)
-    print('\n  demo.py: Peer 3 will download in 5 seconds')
-    time.sleep(5)
-    print('\n  demo.py: Peer3 attempting to download f1_dir1.txt')
+    print('  demo.py: peers will download in 5 seconds\n')
+    time.sleep(8)
+    print('  demo.py: Peer3 attempting to download f1_dir1.txt')
     peer3.download_file_thread('f1_dir1.txt')
-    print('\n  demo.py: PEER4 ATTEMPTING DOWNLOAD')
+    print('  demo.py: Peer4 attemping to download f1_dir1.txt')
     peer4.download_file_thread('f1_dir1.txt')
-    print()
 
 
     time.sleep(10)
+    print()
     print('  demo.py: Peers closing')
     peer1.close_peer()
     peer2.close_peer()
     peer3.close_peer()
     peer4.close_peer()
     time.sleep(1)
-    print()
     print("  demo.py: peers have closed.")
     stop_server(server_process)
     peer1_thread.join()

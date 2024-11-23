@@ -8,25 +8,15 @@ CHUNK_SIZE = 1024
 DOWNLOAD_QUEUE_LEN = 3
 
 OPCODE_REQ_CHUNK_FROM_SERVER = '0'
-OPCODE_INVALID_DATA_RECEIVED = '0'
-OPCODE_FILE_DATA_RECEIVED = '0'
-
-OPCODE_REQ_CHUNK_FROM_PEER = '2'
-OPCODE_VALID_DATA_RECEIVED ='2'
-
-OPCODE_UPLOAD_FILE_DATA = '3' # Peer tells the server what files it has - sends file's name and its number of chunks
-OPCODE_DOWNLOAD_FILE_FROM_SERVER = '4'
-
-OPCODE_SEND_CHUNK_TO_PEER = '5'
+OPCODE_REQ_CHUNK_FROM_PEER = '1'
+OPCODE_UPLOAD_FILE_DATA = '2' # Peer tells the server what files it has - sends file's name and its number of chunks
+OPCODE_DOWNLOAD_FILE_FROM_SERVER = '3'
+OPCODE_SEND_CHUNK_TO_PEER = '4'
 OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 OPCODE_FAILURE = '6'
-
 OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
-
 OPCODE_SEND_CHUNK_HASH_TO_SERVER = '8'
 OPCODE_REQ_CHUNK_HASH = '9'
-
-
 OPCODE_DOWNLOAD_COMPLETE = 'a'
 
 class Peer:
@@ -68,7 +58,6 @@ class Peer:
         self.needed_file_chunks = {}
         self.malicious = malicious
         self.download_threads = []
-        #print(f'  peer.py: Created new peer id: {peer_id}, host: {host}, port: {port}, file_dir: {files_dir}')
 
 
     def start_listening(self):
@@ -76,7 +65,6 @@ class Peer:
             Create and setup the listening socket.
             This is for handling requests from other peers, not the server.
             Throws OSError when the listener_socket is closed by close_peer()
-
         """
 
         # Create and setup the listener_socket
@@ -85,7 +73,6 @@ class Peer:
         self.listener_socket.bind((self.host, self.port + self.peer_id))
         self.listener_socket.listen(5)
         self.listener_socket.settimeout(5.0)
-        #print(f'  peer.py: Peer{self.peer_id} listening on port {self.port + self.peer_id}')
 
         handler_threads = [] # stores threads created to handle other peers
         
@@ -102,7 +89,6 @@ class Peer:
                 continue
 
             except OSError as e:
-                #print(f'  peer.py: accept() failed with OSError: {e}')
                 break
         
         # Join all active threads with other peers
@@ -117,7 +103,6 @@ class Peer:
                 It continuously performs the operations requested until the connection is closed or the socket times out after
                 4 seconds.
 
-
             Inputs: 
                 peer_socket - socket for communicating with the peer that initiated an interaction with this peer
                        addr - tuple (ip_addr, port) with the ip address (string) and the port number (int) of the peer
@@ -129,26 +114,22 @@ class Peer:
 
         """
 
-        #print(f'  peer.py: Peer{self.peer_id} received connection from {addr}')
         peer_socket.settimeout(4.0)
 
+        # Continuously listens for messages from the connected peer and perfrom the requested operation
         while True:
-            # recieve message from the peer and perfrom the requested operation
             try: 
                 message_length = self.get_message_length(peer_socket)
-                #print(f' peer.py: Peer{self.peer_id} received message of length: ({message_length})')
                 
                 # close the connection on NULL message
                 if not message_length:
                     break
 
                 peer_message = peer_socket.recv(message_length).decode('utf-8')
-                #print(f'  peer.py: Peer{self.peer_id} Received message from {addr}\n           message: {peer_message}\n           msg_length: {message_length}')
 
                 # if data starts with "2", the peer is requesting file_data
                 if peer_message[0] == OPCODE_REQ_CHUNK_FROM_PEER:
                     # message format: OPCODE_REQ_CHUNK_FROM_PEER + '#' + file_name + '#' + chunk_num
-                    #peer_socket.send(self.file_data.encode('utf-8'))
                     file_name, chunk_num = peer_message.split('#')[1], int(peer_message.split('#')[2])
                     self.send_chunk_to_peer(peer_socket, file_name, chunk_num)
                     break
@@ -157,7 +138,6 @@ class Peer:
             except socket.timeout:
                 continue
             except (OSError, ConnectionResetError) as e:
-                #print(f'  peer.py: Exception in handle_peer_request: {e}')
                 break
 
         # close the connection to the peer
@@ -166,35 +146,36 @@ class Peer:
 
 
     def send_chunk_to_peer(self, peer_socket, file_name, chunk_num):
+        """
+            Description - when a peer connects to this peer to request a file chunk, this method sends the chunk in a utf-8 message. It also prepends the length of that
+                          message so the peer knows how many bytes to read
+            
+            Input
+                peer_socket - the socket connection between this peer and the peer requesting the file chunk
+                  file_name - the name of the file whose chunk is being requested
+                  chunk_num - the chunk id within the file
+        """
         chunk = self.files[file_name][chunk_num]
 
         # if this peer is malicious, modify the data
         if self.malicious:
-            #print(f'  peer.py: modifying chunk. origingal: {chunk}')
             chunk = 'INVALID_'
-            #print(f'  peer.py: chunk has been modified: {chunk}')
         
+        # send the message and its length
         message = OPCODE_SEND_CHUNK_TO_PEER + '#' + chunk
         message = message.encode('utf-8')
         message_length = str(len(message)) + '#'
 
-        #print(f'\nTESTING: Peer{self.peer_id} sent chunk to another peer\n           message: {message}\n           msg_len: {message_length}\n')
-
         peer_socket.send(message_length.encode('utf-8'))
         peer_socket.send(message)
-        #print(f'  peer.py: peer sent message to peer: {message}')
         return
 
 
     def create_server_socket(self):
         """
-            Creates a socket specifically for communicating with the central server
-
+            Description - Creates a socket specifically for communicating with the central server
         """
-
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        #time.sleep(2)
-        #print(f'  peer.py: Created socket for Peer{self.peer_id}')
 
 
     def upload_file_data(self):
@@ -204,18 +185,13 @@ class Peer:
                 file in self.files as well as the number of chunks that file is broken into.
 
                 The string uses the # character to tell the server when the file_name and num_chunks values end.
-        
         """
-        # tell server what files I have (name of file + number of chunks)
         message = self.make_message_header(OPCODE_UPLOAD_FILE_DATA)
         for file_name in self.files:
             file_name_length = str(len(file_name))
             num_chunks = str(len(self.files[file_name]))
-
-            # pound signs are a delimiter to tell the server when the file_name_length and num_chunks end
             message += file_name_length + '#' + file_name + num_chunks + '#' 
         
-        #print(f'  peer.py: Peer{self.peer_id} uploading file data to server\n           message: {message}')
         message = message.encode('utf-8')
         message_length = str(len(message)) + '#'
         self.server_socket.send(message_length.encode('utf-8'))
@@ -223,6 +199,15 @@ class Peer:
 
 
     def send_server_message(self, socket, opcode, msg_content):
+        """
+            Description - when messages are sent, they must have the length of the encoded message prepended to it. This lets the receiver know how many bytes to read.
+                          This method takes the message that should be sent as well as the socket, encodes it, prepends the length, and sends it along the socket.
+
+            Inputs
+                     socket - the connection socket between this peer and whoever is receiving the message
+                     opcode - the OPCODE tells the recipient what the purpose of the message is
+                msg_content - the data that is being sent
+        """
         message = self.make_message_header(opcode)
         message += msg_content
         message = message.encode('utf-8')
@@ -235,10 +220,8 @@ class Peer:
         """
             Loop through every chunk for every file that this peer wants to share with the network. Calculate the hash for each chunk
             and send that to the server.
-
         """
 
-        #print(f"self.files: {self.files}")
         for file_name in self.files:
             chunk_set = self.files[file_name]
             for chunk_num in chunk_set:
@@ -248,11 +231,16 @@ class Peer:
                 message = file_name + "#" + str(chunk_num) + "#" + chunk_hex_dig
 
                 # Send the hash to the server
-                #print(f'sending chunk_hash {message}')
                 self.send_server_message(self.server_socket, OPCODE_SEND_CHUNK_HASH_TO_SERVER, message)
 
 
     def hash_chunk(self, chunk):
+        """
+            Description - this takes a chunk and returns its sha256 hex digest
+
+            Inputs
+                chunk - the chunk being hashed
+        """
         encoded_chunk = chunk.encode('utf-8')
         chunk_hash_obj = hashlib.sha256()
         chunk_hash_obj.update(encoded_chunk)
@@ -267,28 +255,27 @@ class Peer:
                 The files that peers share with the network are stored in a single directory that is held in self.files_dir.
                 This method loops through each of the files in that directory and breaks the files into chunks. The chunks
                 are stored in the self.files dictionary.
-
         """
 
-        # break all files in the directory into chunks and store them in files
         for file in os.listdir(self.files_dir):
             # Create full path to the entry
             full_path = os.path.join(self.files_dir, file)
+
             # Check if the entry is a file
             if os.path.isfile(full_path):
                 self.files[file] = self.file_to_chunks(full_path, CHUNK_SIZE)
-        #print(f'  peer.py: files - {self.files}')
         
 
     def file_to_chunks(self, directory_path, chunk_size):
         """
-            inputs:
+            Description - breaks a file's contents up into chunks and returns a dictionary containing them.
+
+            Inputs:
                 file_path - root path of the directory containing files for this peer to upload.
                 chunk_size - the files will be split up into chunks of this size in bytes
 
-            outputs:
+            Outputs:
                 chunk_dict - a dictionary that enumerates the files chunks {1:'chunk1_data', 2:'chunk2_data', 3:'chunk3_data', ...}
-
         """
 
         chunk_dict = {}
@@ -300,18 +287,14 @@ class Peer:
                     break
                 chunk_dict[i] = chunk
                 i += 1
-
         return chunk_dict
 
 
     def connect_to_server(self):
         """
             Connects the peer to the central server using the designated server_socket
-
         """
-
         self.server_socket.connect((self.host, self.port))
-        #print(f"  peer.py: Peer {self.peer_id} connected to server at {self.host}:{self.port}")
 
 
     def make_message_header(self, opcode):

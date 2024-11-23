@@ -3,10 +3,10 @@ import threading
 import random
 from pymongo import MongoClient
 
-DOWNLOAD_QUEUE_LEN = 3
+DOWNLOAD_QUEUE_LEN = 3 # the maximum number of chunks that can be downloaded simultaneously
 
-OPCODE_RECORD_FILE_DATA = '3'
-OPCODE_FILE_REQUEST_FROM_PEER = '4'
+OPCODE_RECORD_FILE_DATA = '2'
+OPCODE_FILE_REQUEST_FROM_PEER = '3'
 OPCODE_CHUNK_DOWNLOAD_SUCCESS = '5'
 OPCODE_FAILURE = '6'
 OPCODE_CLOSING_CONNECTION_TO_SERVER = '7'
