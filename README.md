@@ -11,11 +11,11 @@ Everything is written in python in an Ubuntu environment.
 
 You can run the demo on its own by entering python3 demo.py into the terminal. This will create 4 peers. Two of them upload file1_dir1.txt to the network and the other two download fil1_dir1.txt concurrently. The console logs who is downloading which chunk and who they are downloading it from. Demo_peer.py can be used to create an additional peer on the network by entering python3 demo_peer.py into a different terminal. This peer instance can be controlled with the following commands.
 
-*c - connect to the server
-*q - disconnect from the server
-*u - upload your files to the network
-*f - get a list of files that are available to download
-*d - download a file (you first enter d, then enter the name of the file you want to download).
+- c - connect to the server
+- q - disconnect from the server
+- u - upload your files to the network
+- f - get a list of files that are available to download
+- d - download a file (you first enter d, then enter the name of the file you want to download)
 
 ## Lessons Learned:
 
